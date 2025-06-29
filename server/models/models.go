@@ -6,8 +6,8 @@ import (
 
 type User struct {
 	ID            int       `json:"id"`
-	login         string    `json:"login"`
-	hash_password string    `json:"password"`
+	Login         string    `json:"login"`
+	Hash_password string    `json:"password"`
 	CreatedAt     time.Time `json:"created_at"`
-	role          string    `json:"role"`
+	Role          string    `json:"role"`
 }

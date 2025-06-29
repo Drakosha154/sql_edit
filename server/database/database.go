@@ -7,9 +7,23 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func connect_db() (*sql.DB, error) {
-	connStr := "user=postgres password=123 dbname=SQL_learning sslmode=disable"
-	db, err := sql.Open("postgres", connStr)
+const (
+	host     = "localhost"
+	port     = 5432
+	user     = "postgres"
+	password = "123"
+	dbname   = "sql_learn"
+)
+
+func ConnectDB() (*sql.DB, error) {
+	psqlInfo := fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname,
+	)
+
+	fmt.Println(psqlInfo)
+
+	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
 		return nil, err
 	}

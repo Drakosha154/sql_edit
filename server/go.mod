@@ -1,4 +1,4 @@
-module github.com/Drakosha154/sql-editor
+module sql_edit
 
 go 1.24.0
 
