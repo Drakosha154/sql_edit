@@ -31,10 +31,12 @@ func main() {
 
 	r.Use(LoggerMiddleware())
 
-	r.GET("/api/users", userHandler.GetUsers)
-	//api.POST("/users", createUser)
-	//api.GET("/users/:id", getUserByID)
-
+	api := r.Group("/api")
+	{
+		api.GET("/api/users", userHandler.GetUsers)
+		//api.POST("/users", createUser)
+		//api.GET("/users/:id", getUserByID)
+	}
 
 	// Запускаем сервер на порту 8080
 	r.Run(":8080")

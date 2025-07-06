@@ -1,24 +1,24 @@
-import logo from './logo.svg';
-import './App.css';
+import React from 'react';
+import ERDEditor from './pages/ERDEditor.js';
+import './pages/ERDEditor.css';
+import Navbar from './components/navbar.js';
+import { Container } from 'react-bootstrap';
+import {
+    BrowserRouter as Router,
+    Switch,
+    Route,
+    Routes,
+    Link,
+} from 'react-router-dom'
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Container fluid className="p-0">
+      <Navbar />
+      <Routes>
+        <Route path="/create" element={<ERDEditor />} />
+      </Routes>
+    </Container>
   );
 }
 
