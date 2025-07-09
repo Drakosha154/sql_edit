@@ -6,7 +6,7 @@ const EntityNode = ({ data }) => {
     <div className="entity-node" style={{ 
       border: '1px solid rgb(51 65 85)',
       borderRadius: '4px',
-      backgroundColor: 'rgb(0 191 255)',
+      backgroundColor: 'rgb(1 191 255)',
       paddingTop: "7px",
       overflow: 'hidden',
       minWidth: '250px',
