@@ -1,72 +1,40 @@
-.erd-editor {
-  position: relative;
-  overflow: hidden;
-}
-
-.react-flow__node {
-  border-radius: 5px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.2s ease;
-}
-
-.react-flow__node:hover {
-  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
-}
-
-.react-flow__edge-path {
-  stroke: #0d6efd;
-  stroke-width: 2;
-}
-
-.react-flow__edge-textbg {
-  fill: white;
-  rx: 3;
-  ry: 3;
-}
-
-.react-flow__edge-text {
-  fill: #0d6efd;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.react-flow__controls {
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  border-radius: 5px;
-  overflow: hidden;
-}
-
-.react-flow__minimap {
-  background-color: rgba(255, 255, 255, 0.8);
-  border-radius: 5px;
-  overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.react-flow__background {
-  background-color: #f8f9fa;
-}
-
-/* Кастомные стили для узлов */
-.erd-entity {
-  min-width: 200px;
-  overflow: hidden;
-}
-
-.erd-entity .card-header {
+.entity-node {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   font-size: 14px;
-  padding: 5px 10px;
 }
 
-.erd-entity .table {
-  margin-bottom: 0;
+.entity-node table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.erd-entity .table tr:last-child td {
+.entity-node th {
+  background-color: #e9ecef;
+  padding: 4px 8px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.entity-node td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.entity-node tr:last-child td {
   border-bottom: none;
 }
 
-.erd-entity .table td {
-  padding: 5px 8px;
-  font-size: 13px;
+/* Темная тема для Bootstrap таблиц */
+.react-flow__node .table {
+  color: inherit;
+}
+
+.react-flow__node .table th,
+.react-flow__node .table td {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.text-muted {
+  color: #6c757d !important;
 }

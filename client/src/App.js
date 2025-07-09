@@ -13,12 +13,14 @@ import {
 
 function App() {
   return (
-    <Container fluid className="p-0">
+    <div className="d-flex flex-column vh-100">
       <Navbar />
+      <div className="flex-grow-1 position-relative">
       <Routes>
         <Route path="/create" element={<ERDEditor />} />
       </Routes>
-    </Container>
+      </div>
+    </div>
   );
 }
 
