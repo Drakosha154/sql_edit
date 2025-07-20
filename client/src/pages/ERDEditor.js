@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo} from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import ReactFlow, {
   Controls,
   Background,
@@ -10,7 +10,6 @@ import ReactFlow, {
 } from 'reactflow';
 
 import 'reactflow/dist/style.css';
-import { css } from "@emotion/react";
 
 import { 
   Modal, 
@@ -24,40 +23,82 @@ import {
   Card
 } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import "bootstrap-icons/font/bootstrap-icons.css";
+import './ERDEditor.css';
+
+import Sidebar from '../components/Sidebar';
 import EntityNode from '../components/EntityNode';
+import CustomEdge from '../components/CustomEdge';
 
 const nodeTypes = { entity: EntityNode };
+const edgeTypes = { custom: CustomEdge };
 
 const createEntityNode = (entityName, attributes, position) => ({
-  id: `entity-${Date.now()}`,
+  id: `entity-${entityName}-${Date.now()}`, // Уникальный ID
   type: 'entity',
   position,
   data: {
     label: entityName,
     attributes: attributes.map(attr => ({
+      id: `attr-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Уникальный ID для атрибута
+      handleId: `handle-${attr.id}`,
       name: attr.name,
       type: attr.type,
-      isPrimary: attr.isPrimary
+      isPrimary: attr.isPrimary || false,
+      isNullable: attr.isNullable || false
     }))
   }
 });
 
 export default function ERDEditor() {
-  const [nodes, setNodes] = useState([
-    createEntityNode('customers', [
-      { name: 'customer_id', type: 'integer', isPrimary: true },
-      { name: 'first_name', type: 'character?' },
-      { name: 'last_name', type: 'character?' },
-      { name: 'phone', type: 'character?' },
-      { name: 'email', type: 'character?' },
-      { name: 'street', type: 'character?' },
-      { name: 'city', type: 'character?' },
-      { name: 'state', type: 'character?' },
-      { name: 'zip_code', type: 'character?' }
-    ], { x: 100, y: 100 })
-  ]);
-  
+  const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
+  const [activeNodeId, setActiveNodeId] = useState(null);
+
+  // Обновление атрибутов конкретного узла
+  const updateNodeAttributes = useCallback((nodeId, newAttributes) => {
+  setNodes(prevNodes => 
+    prevNodes.map(node => {
+      if (node.id !== nodeId) return node;
+      
+      const updatedNode = {
+        ...node,
+        data: {
+          ...node.data,
+          attributes: newAttributes.map(attr => ({...attr})) // Полное копирование
+        }
+      };
+      
+      return updatedNode;
+    })
+  );
+}, []);
+
+  // Добавление новой таблицы
+const addNewNode = useCallback((entityName, attributes) => {
+    const lastNode = nodes[nodes.length - 1];
+    const newPosition = lastNode 
+      ? { x: lastNode.position.x, y: lastNode.position.y + 200 } 
+      : { x: 100, y: 100 };
+    
+    const newNode = createEntityNode(
+      `${entityName}${nodes.length + 1}`, 
+      attributes, 
+      newPosition
+    );
+
+    setNodes(prevNodes => [...prevNodes, newNode]);
+    setActiveNodeId(newNode.id);
+  }, [nodes]);
+
+  const onConnect = useCallback((params) => {
+    setEdges(eds => addEdge({
+      ...params,
+      type: 'custom',
+      animated: true,
+      markerEnd: { type: 'arrowclosed' } // Добавьте маркер
+    }, eds));
+  }, []);
 
   const onNodesChange = useCallback(
     changes => setNodes(nds => applyNodeChanges(changes, nds)),
@@ -70,31 +111,41 @@ export default function ERDEditor() {
   );
 
   return (
-    <div style={{ width: '100%', height: '100%' }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        nodeTypes={nodeTypes}
-        proOptions={{ dark: true }}
-        fitView
-      >
-        <MiniMap style={{ backgroundColor: '#2d3748' }}/>
-            <Background 
-          variant="dots" 
-          color="#4a5568"  // Цвет для тёмной темы
-          gap={16} 
-          size={1} 
-        />
-        <Controls 
-          style={{ 
-            backgroundColor: '#2d3748', 
-            borderRadius: '4px',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.5)' 
-          }} 
-        />
-      </ReactFlow>
+    <div className="d-flex w-100 h-100 position-relative">
+      <Sidebar 
+        nodes={nodes} 
+        activeNodeId={activeNodeId} 
+        setActiveNodeId={setActiveNodeId}
+        addNewNode={addNewNode}
+        updateNodeAttributes={updateNodeAttributes}
+      />
+      <div className="position-relative flex-grow-1 h-100">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          nodeTypes={nodeTypes}
+          proOptions={{ dark: true }}
+          fitView
+        >
+          <MiniMap style={{ backgroundColor: '#2d3748' }}/>
+          <Background 
+            variant="dots" 
+            color="#4a5568"
+            gap={16} 
+            size={1} 
+          />
+          <Controls 
+            style={{ 
+              backgroundColor: '#2d3748', 
+              borderRadius: '4px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.5)' 
+            }} 
+          />
+        </ReactFlow>
+      </div>
     </div>
   );
 }

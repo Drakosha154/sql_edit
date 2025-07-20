@@ -1,4 +1,5 @@
 import React from 'react';
+import { useEffect } from 'react';
 import ERDEditor from './pages/ERDEditor.js';
 import './pages/ERDEditor.css';
 import Navbar from './components/navbar.js';
@@ -12,14 +13,16 @@ import {
 } from 'react-router-dom'
 
 function App() {
+  useEffect(() => {
+    document.body.setAttribute('data-bs-theme', 'dark');
+  }, []);
+
   return (
     <div className="d-flex flex-column vh-100">
       <Navbar />
-      <div className="flex-grow-1 position-relative">
       <Routes>
         <Route path="/create" element={<ERDEditor />} />
       </Routes>
-      </div>
     </div>
   );
 }

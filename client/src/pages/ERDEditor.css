@@ -38,3 +38,30 @@
 .text-muted {
   color: #6c757d !important;
 }
+
+.entity-node {
+  background-color: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.entity-node .table {
+  color: inherit;
+}
+
+.entity-node th {
+  background-color: #4a5568;
+  border-color: #718096;
+}
+
+.entity-node td {
+  border-color: #4a5568;
+}
+
+.react-flow__handle {
+  z-index: 1000;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border: 1px solid #495057; /* Контрастная обводка */
+}

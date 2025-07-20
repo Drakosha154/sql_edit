@@ -1,58 +1,101 @@
 import React from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position} from 'reactflow';
+import { useState } from 'react';
 
-const EntityNode = ({ data }) => {
+
+const DEFAULT_HANDLE_STYLE = {
+  width: 10,
+  height: 10,
+};
+
+const EntityNode = ({ id, data }) => {
+  const [hoveredAttr, setHoveredAttr] = useState(null);
+
   return (
-    <div className="entity-node" style={{ 
-      border: '1px solid rgb(51 65 85)',
+    <div className="entity-node border border-2 overflow-visible" style={{
       borderRadius: '4px',
       backgroundColor: 'rgb(1 191 255)',
       paddingTop: "7px",
       overflow: 'hidden',
-      minWidth: '250px',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-    }}>
+      minWidth: '200px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+      position: 'relative' // Необходимо для позиционирования хендлов
+      }}>
       {/* Заголовок сущности */}
-      <div style={{
+      <div className="border-bottom" style={{
         backgroundColor: 'rgb(15 23 43)',
         padding: '8px 12px',
-        borderBottom: '1px solid rgb(51 65 85)',
         fontWeight: 'bold',
-        textAlign: 'center'
+
       }}>
+        <i className="bi bi-table pe-2"></i>
         {data.label}
       </div>
       
       {/* Список атрибутов */}
-      <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-        <table className="table table-sm mb-0">
-          <tbody>
-            {data.attributes.map((attr, index) => (
-              <tr key={index}>
-                <td className="text-center">
-                  {attr.isPrimary && (
-                    <i className="bi bi-key-fill text-warning"></i>
-                  )}
-                </td>
-                <td>{attr.name}</td>
-                <td className="text-muted">{attr.type}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="position-relative">
+        <div style={{ maxHeight: '20rem'}}>
+
+
+          {data.attributes.map((attr) => (
+          <div 
+            key={attr.id}
+            className="attribute-row position-relative d-flex border-bottom border-1 mb"
+            onMouseEnter={() => setHoveredAttr(attr.id)}
+            onMouseLeave={() => setHoveredAttr(null)}
+            style={{
+            backgroundColor: 'rgb(51 65 85)'}}
+          >
+            {/* Target Handle (слева) */}
+            <div className="handle-container left">
+              <Handle
+                type="target"
+                position={Position.Left}
+                id={`${id}-${attr.id}-target`}
+                style={{ 
+                  opacity: hoveredAttr === attr.id ? 1 : 0.3,
+                  background: '#ff0072',
+                  width: 8,
+                  height: 8,
+                  transition: 'opacity 0.2s'
+                }}
+                isConnectable={true}
+              />
+            </div>
+
+            {/* Содержимое атрибута */}
+            <div className="d-flex item-cente justify-content-start me-auto px-2">
+              <span>{attr.name}</span>
+            </div>
+            <div className="d-flex justify-content-end px-2">
+              <div className="center text-muted">
+                {attr.isPrimary &&
+                  <i className="bi bi-key"> </i>
+                }
+                {attr.type}
+              </div>
+            </div>
+
+            {/* Source Handle (справа) */}
+            <div className="handle-container right">
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={`${id}-${attr.id}-source`}
+                style={{
+                  opacity: hoveredAttr === attr.id ? 1 : 0.3,
+                  background: '#0072ff',
+                  width: 8,
+                  height: 8,
+                  transition: 'opacity 0.2s'
+                }}
+                isConnectable={true}
+              />
+            </div>
+          </div>
+        ))}
+        </div>
       </div>
-      
-      {/* Хендлы для соединений */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        style={{ top: '50%', background: '#555' }}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        style={{ top: '50%', background: '#555' }}
-      />
     </div>
   );
 };
