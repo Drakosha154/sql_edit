@@ -54,6 +54,7 @@ export default function ERDEditor() {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [activeNodeId, setActiveNodeId] = useState(null);
+  const [activeEdgeId, setActiveEdgeId] = useState(null);
 
   // Обновление атрибутов конкретного узла
   const updateNodeAttributes = useCallback((nodeId, newAttributes) => {
@@ -89,6 +90,7 @@ const addNewNode = useCallback((entityName, attributes) => {
 
     setNodes(prevNodes => [...prevNodes, newNode]);
     setActiveNodeId(newNode.id);
+    console.log(edges);
   }, [nodes]);
 
   const onConnect = useCallback((params) => {
@@ -111,15 +113,20 @@ const addNewNode = useCallback((entityName, attributes) => {
   );
 
   return (
-    <div className="d-flex w-100 h-100 position-relative">
+    <div className="erd-container d-flex w-100 h-100 position-relative overflow-hidden">
+      <div className="sidebar-wrapper">
       <Sidebar 
-        nodes={nodes} 
-        activeNodeId={activeNodeId} 
+        nodes={nodes}
+        edges={edges}
+        activeNodeId={activeNodeId}
+        activeEdgeId={activeEdgeId}
         setActiveNodeId={setActiveNodeId}
+        setActiveEdgeId={setActiveEdgeId}
         addNewNode={addNewNode}
         updateNodeAttributes={updateNodeAttributes}
       />
-      <div className="position-relative flex-grow-1 h-100">
+      </div>
+      <div className="reactflow-wrapper position-relative flex-grow-1 h-100">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -127,6 +134,7 @@ const addNewNode = useCallback((entityName, attributes) => {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           proOptions={{ dark: true }}
           fitView
         >

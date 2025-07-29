@@ -65,3 +65,19 @@
   background: #fff;
   border: 1px solid #495057; /* Контрастная обводка */
 }
+
+.erd-container {
+  height: 100vh;
+  width: 100vw;
+}
+
+.sidebar-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #dee2e6;
+}
+
+.reactflow-wrapper {
+  height: 100%;
+}
