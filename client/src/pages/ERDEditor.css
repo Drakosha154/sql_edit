@@ -81,3 +81,99 @@
 .reactflow-wrapper {
   height: 100%;
 }
+
+/* Стили для SQL модального окна */
+.sql-modal pre {
+  font-family: 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Стили для кнопок */
+.btn-outline-light {
+  transition: all 0.2s;
+}
+
+.btn-outline-light:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Скрытый input для импорта */
+input[type="file"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.react-flow__edge.one-to-one .react-flow__edge-path {
+  stroke: #0d6efd;
+  stroke-dasharray: 5;
+}
+
+.react-flow__edge.one-to-many .react-flow__edge-path {
+  stroke: #198754;
+}
+
+.react-flow__edge.many-to-many .react-flow__edge-path {
+  stroke: #dc3545;
+  stroke-width: 2;
+}
+
+.edge-type-badge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+}
+
+.badge-1to1 {
+  background-color: #0d6efd;
+}
+
+.badge-1toN {
+  background-color: #198754;
+}
+
+.badge-NtoN {
+  background-color: #dc3545;
+}
+
+/* Стили для разных типов связей */
+.custom-edge path {
+  stroke-width: 2;
+}
+
+.custom-edge.one-to-one path {
+  stroke: #0d6efd;
+  stroke-dasharray: 5;
+}
+
+.custom-edge.one-to-many path {
+  stroke: #198754;
+}
+
+.custom-edge.many-to-many path {
+  stroke: #dc3545;
+}
+
+/* Анимация для выделенных связей */
+.custom-edge.selected path {
+  stroke-width: 3;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { stroke-width: 3; }
+  50% { stroke-width: 5; }
+  100% { stroke-width: 3; }
+}
+
+.react-flow__edge-path {
+  stroke-width: 2;
+  fill: none;
+}
+
+.react-flow__edge textPath {
+  font-size: 8px;
+  fill: #6c757d;
+}

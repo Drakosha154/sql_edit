@@ -51,7 +51,7 @@ const EntityNode = ({ id, data }) => {
               <Handle
                 type="target"
                 position={Position.Left}
-                id={`${id}-${attr.id}-target`}
+                id={`${attr.id}`}
                 style={{ 
                   opacity: hoveredAttr === attr.id ? 1 : 0.3,
                   background: '#ff0072',
@@ -81,7 +81,7 @@ const EntityNode = ({ id, data }) => {
               <Handle
                 type="source"
                 position={Position.Right}
-                id={`${id}-${attr.id}-source`}
+                id={`${attr.id}`}
                 style={{
                   opacity: hoveredAttr === attr.id ? 1 : 0.3,
                   background: '#0072ff',

@@ -1,10 +1,20 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState} from 'react';
 
-const AttributeItem = React.memo(({ attribute, onUpdate, onRemove }) => {
+const AttributeItem = React.memo(({ attribute, onUpdate, onRemove, nodeId, updateEdgeAttributes}) => {
+
+  const [prevName, setPrevName] = useState(attribute.name);
+  
   const handleChange = useCallback((field) => (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+
+    // Если изменяется имя атрибута
+    if (field === 'name') {
+      updateEdgeAttributes(nodeId, prevName, value);
+      setPrevName(value);
+    }
+
     onUpdate(attribute.id, field, value);
-  }, [onUpdate, attribute.id]);
+  }, [onUpdate, attribute.id, nodeId, prevName, updateEdgeAttributes]);
 
   return (
     <div className="d-flex align-items-center gap-2 mb-2 p-2 border rounded">
@@ -21,38 +31,48 @@ const AttributeItem = React.memo(({ attribute, onUpdate, onRemove }) => {
         value={attribute.type}
         onChange={handleChange('type')}
       >
-        <option value="bigint">bigint</option>
-        <option value="integer">integer</option>
+        <option value="string">TEXT</option>
+        <option value="integer">INTEGER</option>
+        <option value="boolean">BOOLEAN</option>
+        <option value="bigint">BIGINT</option>
+        <option value="timestamp">TIMESTAMP</option>
         {/* остальные типы */}
       </select>
-      
-      <div className="d-flex gap-2">
-        <div className="form-check">
-          <input
-            className="form-check-input"
-            type="checkbox"
-            checked={attribute.isPrimary}
-            onChange={handleChange('isPrimary')}
-          />
-          <label className="form-check-label small">PK</label>
-        </div>
+
+      {/* Иконки вместо чекбоксов */}
+      <div className="d-flex gap-1">
+        {/* Primary Key */}
+        <button
+          className={`btn btn-sm ${attribute.isPrimary ? 'btn-success' : 'btn-outline-secondary'}`}
+          onClick={() => onUpdate(attribute.id, 'isPrimary', !attribute.isPrimary)}
+          title="Primary Key"
+        >
+          <i className="bi bi-key"> </i>
+        </button>
         
-        <div className="form-check">
-          <input
-            className="form-check-input"
-            type="checkbox"
-            checked={attribute.isNullable}
-            onChange={handleChange('isNullable')}
-          />
-          <label className="form-check-label small">NULL</label>
-        </div>
+        {/* Unique */}
+        <button
+          className={`btn btn-sm ${attribute.isUnique ? 'btn-success' : 'btn-outline-secondary'}`}
+          onClick={() => onUpdate(attribute.id, 'isUnique', !attribute.isUnique)}
+          title="Unique"
+        >
+          U
+        </button>
+        
+        {/* Nullable */}
+        <button
+          className={`btn btn-sm ${attribute.isNullable ? 'btn-outline-secondary' : 'btn-success'}`}
+          onClick={() => onUpdate(attribute.id, 'isNullable', !attribute.isNullable)}
+          title="Not NULL"
+        >
+          N
+        </button>
       </div>
-      
       <button 
         className="btn btn-sm btn-outline-danger"
         onClick={() => onRemove(attribute.id)}
       >
-        &times;
+        X
       </button>
     </div>
   );

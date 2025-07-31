@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import AttributeItem from './AttributeItem';
 
 const TablesList = ({
@@ -6,7 +6,24 @@ const TablesList = ({
     addNewNode,
     activeNodeId,
     setActiveNodeId,
-    updateNodeAttributes}) => {
+    updateNodeAttributes,
+    updateEdgeAttributes,
+  }) => {
+
+  const [editingNodeId, setEditingNodeId] = useState(null);
+  const [newNodeName, setNewNodeName] = useState('');
+
+  const handleNodeNameChange = useCallback((nodeId, currentName) => {
+    setEditingNodeId(nodeId);
+    setNewNodeName(currentName);
+  }, []);
+
+  const saveNodeName = useCallback(() => {
+    if (editingNodeId && newNodeName.trim()) {
+      updateNodeAttributes(editingNodeId, nodes.find(n => n.id === editingNodeId).data.attributes, newNodeName);
+    }
+    setEditingNodeId(null);
+  }, [editingNodeId, newNodeName, nodes, updateNodeAttributes]);
 
   const activeNode = useMemo(() => 
     nodes.find(node => node.id === activeNodeId), 
@@ -17,10 +34,11 @@ const TablesList = ({
     if (!activeNode) return;
     
     const newAttribute = {
-      id: `attr-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      id: `attr-${Date.now()}`,
       name: `field_${activeNode.data.attributes.length + 1}`,
       type: 'bigint',
       isPrimary: false,
+      isUnique: false,
       isNullable: true
     };
     
@@ -34,6 +52,7 @@ const TablesList = ({
       attr.id === attributeId ? { ...attr, [field]: value } : attr
     );
     
+
     updateNodeAttributes(activeNode.id, updatedAttributes);
   }, [activeNode, updateNodeAttributes]);
 
@@ -67,7 +86,30 @@ const TablesList = ({
                   className={`accordion-button ${activeNodeId === node.id ? '' : 'collapsed'}`}
                   onClick={() => setActiveNodeId(activeNodeId === node.id ? null : node.id)}
                 >
-                  {node.data.label}
+                  {editingNodeId === node.id ? (
+  <div className="d-flex gap-2 mb-2">
+    <input
+      type="text"
+      className="form-control form-control-sm"
+      value={newNodeName}
+      onChange={(e) => setNewNodeName(e.target.value)}
+    />
+    <button 
+      className="btn btn-sm btn-success"
+      onClick={saveNodeName}
+    >
+      <i className="bi bi-check"></i>
+    </button>
+  </div>
+) : (
+  <div 
+    className="d-flex justify-content-between align-items-center"
+    onClick={() => handleNodeNameChange(node.id, node.data.label)}
+  >
+    <span>{node.data.label}</span>
+    <i className="bi bi-pencil ps-2"></i>
+  </div>
+)}
                 </button>
               </h2>
               <div className={`accordion-collapse collapse ${activeNodeId === node.id ? 'show' : ''}`}>
@@ -80,6 +122,8 @@ const TablesList = ({
                           attribute={attribute}
                           onUpdate={updateAttribute}
                           onRemove={removeAttribute}
+                          nodeId={activeNode.id}
+                          updateEdgeAttributes={updateEdgeAttributes}
                         />
                       ))}
                       <button 

@@ -1,5 +1,7 @@
 import { getBezierPath } from 'reactflow';
 
+import { useCallback, useState, useMemo} from 'react';
+
 export default function CustomEdge({
   id,
   sourceX,
@@ -8,8 +10,8 @@ export default function CustomEdge({
   targetY,
   sourcePosition,
   targetPosition,
+  data,
   style = {},
-  markerEnd,
 }) {
   const [edgePath] = getBezierPath({
     sourceX,
@@ -20,13 +22,57 @@ export default function CustomEdge({
     targetPosition,
   });
 
+  // Определяем маркеры в зависимости от типа связи
+  const { markerStart, markerEnd, edgeStyle } = useMemo(() => {
+  const baseStyle = { 
+    ...style, 
+    stroke: '#6c757d', 
+    strokeWidth: 2,
+    fill: 'none'
+  };
+  
+  switch(data?.relationType) {
+    case 'one-to-one':
+      return {
+        markerStart: 'url(#one-marker)',
+        markerEnd: 'url(#one-marker)',
+        edgeStyle: baseStyle
+      };
+    case 'one-to-many':
+      return {
+        markerStart: 'url(#one-marker)',
+        markerEnd: 'url(#many-marker)',
+        edgeStyle: baseStyle
+      };
+    case 'many-to-one':
+      return {
+        markerStart: 'url(#many-marker)',
+        markerEnd: 'url(#one-marker)',
+        edgeStyle: baseStyle
+      };
+    case 'many-to-many':
+      return {
+        markerStart: 'url(#many-marker)',
+        markerEnd: 'url(#many-marker)',
+        edgeStyle: baseStyle
+      };
+    default:
+      return {
+        markerStart: undefined,
+        markerEnd: undefined,
+        edgeStyle: style
+      };
+  }
+}, [data?.relationType, style]);
+
   return (
     <>
       <path
         id={id}
-        style={style}
+        style={edgeStyle}
         className="react-flow__edge-path"
         d={edgePath}
+        markerStart={markerStart}
         markerEnd={markerEnd}
       />
       <text>
@@ -36,7 +82,7 @@ export default function CustomEdge({
           startOffset="50%"
           textAnchor="middle"
         >
-          1:N
+          {data.label}
         </textPath>
       </text>
     </>

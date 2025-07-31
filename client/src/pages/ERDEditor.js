@@ -31,16 +31,18 @@ import EntityNode from '../components/EntityNode';
 import CustomEdge from '../components/CustomEdge';
 
 const nodeTypes = { entity: EntityNode };
-const edgeTypes = { custom: CustomEdge };
+const edgeTypes = {
+  custom: CustomEdge // без стрелочной функции
+};
 
 const createEntityNode = (entityName, attributes, position) => ({
-  id: `entity-${entityName}-${Date.now()}`, // Уникальный ID
+  id: `${entityName}`, // Уникальный ID
   type: 'entity',
   position,
   data: {
     label: entityName,
     attributes: attributes.map(attr => ({
-      id: `attr-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Уникальный ID для атрибута
+      id: `${entityName}``attr--${Math.random().toString(36).substr(2, 9)}`, // Уникальный ID для атрибута
       handleId: `handle-${attr.id}`,
       name: attr.name,
       type: attr.type,
@@ -56,8 +58,98 @@ export default function ERDEditor() {
   const [activeNodeId, setActiveNodeId] = useState(null);
   const [activeEdgeId, setActiveEdgeId] = useState(null);
 
+  const updateEdgeRelation = useCallback((edgeId, newRelation) => {
+  setEdges(eds => eds.map(edge => {
+    if (edge.id === edgeId) {
+      const labelMap = {
+        'one-to-one': '1:1',
+        'one-to-many': '1:N',
+        'many-to-one': 'N:1',
+        'many-to-many': 'N:N'
+      };
+
+      return {
+        ...edge,
+        data: {
+          ...edge.data,
+          relationType: newRelation,
+          label: labelMap[newRelation] || '1:N'
+        },
+        markerEnd: newRelation === 'many-to-many' ? { type: 'arrowclosed' } : undefined
+      };
+    }
+    return edge;
+  }));
+}, []);
+
+  // Функция удаления связи
+  const deleteEdge = useCallback((edgeId) => {
+    setEdges(eds => eds.filter(e => e.id !== edgeId));
+  }, []);
+
+  const updateEdgeAttributes = useCallback((nodeId, oldAttrName, newAttrName) => {
+    console.log(nodeId, oldAttrName, newAttrName);
+  setEdges(eds => eds.map(edge => {
+    // Обновляем sourceHandle если он относится к измененному атрибуту
+    if (edge.source === nodeId && edge.sourceHandle.includes(oldAttrName)) {
+      return {
+        ...edge,
+        sourceHandle: edge.sourceHandle.replace(oldAttrName, newAttrName)
+      };
+    }
+    // Обновляем targetHandle если он относится к измененному атрибуту
+    if (edge.target === nodeId && edge.targetHandle.includes(oldAttrName)) {
+      return {
+        ...edge,
+        targetHandle: edge.targetHandle.replace(oldAttrName, newAttrName)
+      };
+    }
+    return edge;
+  }));
+}, []);
+
+const updateEdgesOnNodeRename = useCallback((oldNodeId, newNodeId, newLabel) => {
+  setEdges(eds => eds.map(edge => {
+    const updatedEdge = {...edge};
+    
+    // Обновляем source если это измененная таблица
+    if (edge.source === oldNodeId) {
+      updatedEdge.source = newNodeId;
+      updatedEdge.data = {
+        ...updatedEdge.data,
+        sourceLabel: newLabel
+      };
+    }
+    
+    // Обновляем target если это измененная таблица
+    if (edge.target === oldNodeId) {
+      updatedEdge.target = newNodeId;
+      updatedEdge.data = {
+        ...updatedEdge.data,
+        targetLabel: newLabel
+      };
+    }
+    
+    return updatedEdge;
+  }));
+}, []);
+
+const isTableNameUnique = useCallback((name, excludeId = null) => {
+    return !nodes.some(node => 
+      node.data.label === name && node.id !== excludeId
+    );
+  }, [nodes]);
+
   // Обновление атрибутов конкретного узла
-  const updateNodeAttributes = useCallback((nodeId, newAttributes) => {
+const updateNodeAttributes = useCallback((nodeId, newAttributes, newLabel = null) => {
+  // Если меняется имя - проверяем уникальность
+  if (newLabel) {
+    if (!isTableNameUnique(newLabel, nodeId)) {
+      alert('Таблица с таким именем уже существует!');
+      return false;
+    }
+  }
+
   setNodes(prevNodes => 
     prevNodes.map(node => {
       if (node.id !== nodeId) return node;
@@ -66,14 +158,20 @@ export default function ERDEditor() {
         ...node,
         data: {
           ...node.data,
-          attributes: newAttributes.map(attr => ({...attr})) // Полное копирование
+          label: newLabel || node.data.label,
+          attributes: newAttributes.map(attr => ({...attr}))
         }
       };
+      
+      if (newLabel && newLabel !== node.data.label) {
+        updateEdgesOnNodeRename(nodeId, nodeId, newLabel);
+      }
       
       return updatedNode;
     })
   );
-}, []);
+  return true;
+}, [isTableNameUnique, updateEdgesOnNodeRename]);
 
   // Добавление новой таблицы
 const addNewNode = useCallback((entityName, attributes) => {
@@ -94,13 +192,35 @@ const addNewNode = useCallback((entityName, attributes) => {
   }, [nodes]);
 
   const onConnect = useCallback((params) => {
-    setEdges(eds => addEdge({
-      ...params,
-      type: 'custom',
-      animated: true,
-      markerEnd: { type: 'arrowclosed' } // Добавьте маркер
-    }, eds));
-  }, []);
+
+  const sourceNode = nodes.find(n => n.id === params.source);
+  const targetNode = nodes.find(n => n.id === params.target);
+
+  const targetAttr = targetNode?.data.attributes.find(a => a.id === params.targetHandle);
+
+  // Получаем текущий выбранный тип связи из активного соединения
+  const activeRelation = edges.find(e => e.id === activeEdgeId)?.data?.relationType || 'one-to-many';
+  
+  if (!targetAttr?.isPrimary && !targetAttr?.isUnique && activeRelation !== 'many-to-many') {
+    alert('Для связей 1:1 и 1:N целевой атрибут должен быть PRIMARY KEY или UNIQUE');
+    return;
+  }
+  
+  setEdges(eds => addEdge({
+    ...params,
+    type: 'custom',
+    data: {
+      relationType: activeRelation,
+      label: activeRelation === 'one-to-one' ? '1:1' : 
+            activeRelation === 'many-to-many' ? 'N:N' : '1:N',
+      sourceLabel: sourceNode?.data.label || params.source,
+      targetLabel: targetNode?.data.label || params.target,
+      sourceAttr: params.sourceHandle,
+      targetAttr: params.targetHandle
+    },
+    animated: true,
+  }, eds));
+}, [nodes]);
 
   const onNodesChange = useCallback(
     changes => setNodes(nds => applyNodeChanges(changes, nds)),
@@ -111,6 +231,160 @@ const addNewNode = useCallback((entityName, attributes) => {
     changes => setEdges(eds => applyEdgeChanges(changes, eds)),
     []
   );
+
+  //начало чего то большего
+
+  const generateSQL = () => {
+  // 1. Сначала создаем все таблицы
+  const tablesSQL = nodes.map(node => {
+    const columns = node.data.attributes.map(attr => {
+      let columnDef = `  ${attr.name} ${getSqlType(attr.type)}`;
+      if (attr.isPrimary) columnDef += ' PRIMARY KEY';
+      if (!attr.isNullable) columnDef += ' NOT NULL';
+      return columnDef;
+    }).join(',\n');
+
+    // Добавляем UNIQUE constraints отдельно
+    const uniques = node.data.attributes
+      .filter(attr => attr.isUnique && !attr.isPrimary)
+      .map(attr => `  UNIQUE (${attr.name})`)
+      .join(',\n');
+
+    const tableDef = `CREATE TABLE ${node.data.label} (\n${columns}`;
+    return uniques ? `${tableDef},\n${uniques}\n);` : `${tableDef}\n);`;
+  }).join('\n\n');
+
+  // 2. Затем добавляем внешние ключи
+  const fksSQL = edges.map(edge => {
+    const sourceNode = nodes.find(n => n.id === edge.source);
+    const targetNode = nodes.find(n => n.id === edge.target);
+    
+    const sourceAttr = sourceNode?.data.attributes.find(a => a.id === edge.sourceHandle)?.name;
+    const targetAttr = targetNode?.data.attributes.find(a => a.id === edge.targetHandle)?.name;
+
+    if (edge.data.relationType === 'many-to-many') {
+      const junctionTableName = `${sourceNode.data.label}_${targetNode.data.label}`;
+      return `
+CREATE TABLE ${junctionTableName} (
+  ${sourceNode.data.label}_id ${getSqlType(sourceNode.data.attributes.find(a => a.id === edge.sourceHandle)?.type)},
+  ${targetNode.data.label}_id ${getSqlType(targetNode.data.attributes.find(a => a.id === edge.targetHandle)?.type)},
+  PRIMARY KEY (${sourceNode.data.label}_id, ${targetNode.data.label}_id),
+  FOREIGN KEY (${sourceNode.data.label}_id) REFERENCES ${sourceNode.data.label}(${sourceAttr}),
+  FOREIGN KEY (${targetNode.data.label}_id) REFERENCES ${targetNode.data.label}(${targetAttr})
+);`;
+    } else {
+      return `ALTER TABLE ${sourceNode.data.label}\n` +
+             `ADD CONSTRAINT fk_${sourceNode.data.label}_${sourceAttr}\n` +
+             `FOREIGN KEY (${sourceAttr}) REFERENCES ${targetNode.data.label}(${targetAttr})` +
+             (edge.data.relationType === 'one-to-one' ? ' UNIQUE;' : ';');
+    }
+  }).filter(Boolean).join('\n\n');
+
+  return `${tablesSQL}\n\n${fksSQL}`;
+};
+
+// Функция для преобразования типов
+const getSqlType = (type) => {
+  const typeMap = {
+    'string': 'TEXT',
+    'integer': 'INTEGER',
+    'boolean': 'BOOLEAN',
+    'bigint': 'BIGINT',
+    'timestamp': 'TIMESTAMP'
+  };
+  return typeMap[type.toLowerCase()] || type.toUpperCase();
+};
+
+// Модальное окно для просмотра SQL
+const [showSQLModal, setShowSQLModal] = useState(false);
+const [sqlCode, setSqlCode] = useState('');
+
+const showGeneratedSQL = () => {
+  setSqlCode(generateSQL());
+  setShowSQLModal(true);
+};
+
+const SQLModal = ({ show, sql, onClose }) => {
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(sql);
+  };
+
+  return (
+    <Modal show={show} onHide={onClose} size="lg">
+      <Modal.Header closeButton>
+        <Modal.Title>Сгенерированный SQL</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <pre 
+        class='text-bg-light'
+        style={{ 
+          maxHeight: '60vh',
+          overflow: 'auto',
+          padding: '15px',
+          borderRadius: '4px'
+        }}>
+          {sql}
+        </pre>
+      </Modal.Body>
+      <Modal.Footer>
+        <Button variant="secondary" onClick={onClose}>
+          Закрыть
+        </Button>
+        <Button variant="primary" onClick={copyToClipboard}>
+          <i className="bi bi-clipboard"></i> Копировать
+        </Button>
+      </Modal.Footer>
+    </Modal>
+  );
+};
+
+const exportSchema = () => {
+  const schema = { 
+    nodes, 
+    edges,
+    meta: {
+      version: '1.0',
+      createdAt: new Date().toISOString()
+    }
+  };
+  const data = JSON.stringify(schema, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `db-schema-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+const importSchema = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const { nodes: importedNodes, edges: importedEdges } = JSON.parse(event.target.result);
+      
+      // Валидация импортируемых данных
+      if (!Array.isArray(importedNodes) || !Array.isArray(importedEdges)) {
+        throw new Error('Некорректный формат файла');
+      }
+      
+      setNodes(importedNodes);
+      setEdges(importedEdges);
+    } catch (error) {
+      alert(`Ошибка при импорте: ${error.message}`);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = ''; // Сброс значения для возможности повторного выбора того же файла
+};
+
+  //конец sql
 
   return (
     <div className="erd-container d-flex w-100 h-100 position-relative overflow-hidden">
@@ -124,36 +398,44 @@ const addNewNode = useCallback((entityName, attributes) => {
         setActiveEdgeId={setActiveEdgeId}
         addNewNode={addNewNode}
         updateNodeAttributes={updateNodeAttributes}
+        updateEdgeRelation={updateEdgeRelation}
+        updateEdgeAttributes={updateEdgeAttributes}
+        deleteEdge={deleteEdge}
+        isTableNameUnique={isTableNameUnique}
+        onExport={exportSchema}
+        onImport={importSchema}
+        onGenerateSQL={showGeneratedSQL}
       />
       </div>
       <div className="reactflow-wrapper position-relative flex-grow-1 h-100">
         <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          proOptions={{ dark: true }}
-          fitView
-        >
-          <MiniMap style={{ backgroundColor: '#2d3748' }}/>
-          <Background 
-            variant="dots" 
-            color="#4a5568"
-            gap={16} 
-            size={1} 
-          />
-          <Controls 
-            style={{ 
-              backgroundColor: '#2d3748', 
-              borderRadius: '4px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.5)' 
-            }} 
-          />
-        </ReactFlow>
+  nodes={nodes}
+  edges={edges}
+  onNodesChange={onNodesChange}
+  onEdgesChange={onEdgesChange}
+  onConnect={onConnect}
+  nodeTypes={nodeTypes}
+  edgeTypes={edgeTypes}
+  proOptions={{ dark: true }}
+  fitView
+>
+  <MiniMap style={{ backgroundColor: '#2d3748' }}/>
+  <Background 
+    variant="dots" 
+    color="#4a5568"
+    gap={16} 
+    size={1} 
+  />
+  <Controls 
+    style={{ 
+      backgroundColor: '#2d3748', 
+      borderRadius: '4px',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.5)' 
+    }} 
+  />
+</ReactFlow>
       </div>
+      <SQLModal show={showSQLModal} sql={sqlCode} onClose={() => setShowSQLModal(false)} />
     </div>
   );
 }
