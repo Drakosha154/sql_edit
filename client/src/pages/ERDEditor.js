@@ -295,13 +295,10 @@ const getSqlType = (type) => {
   return typeMap[type.toLowerCase()] || type.toUpperCase();
 };
 
-// Модальное окно для просмотра SQL
-const [showSQLModal, setShowSQLModal] = useState(false);
 const [sqlCode, setSqlCode] = useState('');
 
 const showGeneratedSQL = () => {
   setSqlCode(generateSQL());
-  setShowSQLModal(true);
 };
 
 const SQLModal = ({ show, sql, onClose }) => {
@@ -435,7 +432,6 @@ const importSchema = (e) => {
   />
 </ReactFlow>
       </div>
-      <SQLModal show={showSQLModal} sql={sqlCode} onClose={() => setShowSQLModal(false)} />
     </div>
   );
 }

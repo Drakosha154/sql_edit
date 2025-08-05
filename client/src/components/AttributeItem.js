@@ -7,6 +7,11 @@ const AttributeItem = React.memo(({ attribute, onUpdate, onRemove, nodeId, updat
   const handleChange = useCallback((field) => (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
 
+    if (field === 'name' && !value.trim()) {
+      alert('Имя атрибута не может быть пустым');
+      return;
+    }
+
     // Если изменяется имя атрибута
     if (field === 'name') {
       updateEdgeAttributes(nodeId, prevName, value);

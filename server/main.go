@@ -4,47 +4,65 @@ import (
 	"fmt"
 	"log"
 	"sql_edit/database"
-	"sql_edit/handlers"
-	"sql_edit/repositories"
+	"sql_edit/middleware"
+	"sql_edit/routes"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-
-	_ "github.com/lib/pq"
 )
 
 func main() {
 
-	db, err := database.ConnectDB()
-	if err != nil {
-		log.Fatal("Ошибка подключения к базе данных:", err)
+	dbConfig := database.Config{
+		Host:     "localhost",
+		Port:     5432,
+		User:     "postgres",
+		Password: "123",
+		DBName:   "sql_learn",
 	}
-	defer db.Close()
 
-	// Инициализация репозитория
-	userRepo := &repositories.UserRepository{DB: db}
+	// Инициализация БД
+	// Инициализация подключения
+	if err := database.InitDB(dbConfig); err != nil {
+		log.Fatalf("Ошибка подключения к БД: %v", err)
+	}
+	defer database.CloseDB()
 
-	// Инициализация обработчика
-	userHandler := &handlers.UserHandler{Repo: userRepo}
-
-	// Создаем новый экземпляр роутера
+	// Настройка роутера
 	r := gin.Default()
 
-	r.Use(LoggerMiddleware())
+	// Настройка CORS
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
-	api := r.Group("/api")
+	r.Use(func(c *gin.Context) {
+		fmt.Printf("Received %s request for: %s\n", c.Request.Method, c.Request.URL.Path)
+		c.Next()
+	})
+
+	// Публичные маршруты (без аутентификации)
+	r.POST("/api/register", routes.Register)
+	r.POST("/api/login", routes.Login)
+
+	// Приватные маршруты (требуют JWT)
+	authGroup := r.Group("/api")
+	authGroup.Use(middleware.AuthMiddleware())
 	{
-		api.GET("/api/users", userHandler.GetUsers)
-		//api.POST("/users", createUser)
-		//api.GET("/users/:id", getUserByID)
 	}
 
-	// Запускаем сервер на порту 8080
+	// Выведите все зарегистрированные маршруты
+	fmt.Println("Registered routes:")
+	for _, route := range r.Routes() {
+		fmt.Printf("%-6s %s\n", route.Method, route.Path)
+	}
+
+	// Запуск сервера
 	r.Run(":8080")
-}
-
-func LoggerMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		fmt.Println("Новый запрос:", c.Request.Method, c.Request.URL.Path)
-		c.Next() // Передаем управление следующему обработчику
-	}
 }

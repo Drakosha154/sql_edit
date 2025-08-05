@@ -1,38 +1,41 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
-
-	_ "github.com/lib/pq"
+	"log"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
-const (
-	host     = "localhost"
-	port     = 5432
-	user     = "postgres"
-	password = "123"
-	dbname   = "sql_learn"
-)
+var DB *gorm.DB
 
-func ConnectDB() (*sql.DB, error) {
-	psqlInfo := fmt.Sprintf(
+type Config struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	DBName   string
+}
+
+func InitDB(cfg Config) error {
+	dsn := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname,
+		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName,
 	)
 
-	fmt.Println(psqlInfo)
-
-	db, err := sql.Open("postgres", psqlInfo)
+	var err error
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if err = db.Ping(); err != nil {
-		return nil, err
-	}
+	log.Println("Успешное подключение к PostgreSQL с GORM!")
+	return nil
+}
 
-	fmt.Println("Успешное подключение к базе данных!")
-
-	return db, nil
+func CloseDB() {
+    if DB != nil {
+        sqlDB, _ := DB.DB()
+        sqlDB.Close()
+    }
 }

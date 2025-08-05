@@ -1,28 +1,32 @@
-import React from 'react';
-import { useEffect } from 'react';
-import ERDEditor from './pages/ERDEditor.js';
-import './pages/ERDEditor.css';
-import Navbar from './components/navbar.js';
-import { Container } from 'react-bootstrap';
-import {
-    BrowserRouter as Router,
-    Switch,
-    Route,
-    Routes,
-    Link,
-} from 'react-router-dom'
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Navbar from './components/navbar';
+import ERDEditor from './pages/ERDEditor';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Profile from './pages/Profile';
 
 function App() {
+  const [isAuth, setAuth] = useState(false);
+
   useEffect(() => {
     document.body.setAttribute('data-bs-theme', 'dark');
   }, []);
 
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) setAuth(true);
+  }, []);
+
   return (
     <div className="d-flex flex-column vh-100">
-      <Navbar />
-      <Routes>
-        <Route path="/create" element={<ERDEditor />} />
-      </Routes>
+      <Navbar isAuth={isAuth} setAuth={setAuth} />
+        <Routes>
+          <Route path="/create" element={<ERDEditor />} />
+          <Route path="/login" element={<Login setAuth={setAuth} />} />
+          <Route path="/register" element={<Register setAuth={setAuth} />} />
+          <Route path="/profile" element={<Profile />} />
+        </Routes>
     </div>
   );
 }
