@@ -1,36 +1,47 @@
 import React, { useState } from 'react';
 import { Button, Modal, Form } from 'react-bootstrap';
+import { useNavigate } from "react-router-dom";
 
-export default function SaveDatabaseButton({ sqlCode }) {
+export default function SaveDatabaseButton({ nodes, tableData, generateSQL, generateDataInsertSQL }) {
   const [show, setShow] = useState(false);
+  const [sqlCode, setSqlCode] = useState('');
+  const [sqlCodeInsert, setsqlCodeInsert] = useState('');
   const [name, setName] = useState('');
+  const navigate = useNavigate();
 
   const handleSave = async () => {
     try {
-      const response = await fetch('/databases', {
+      const currentSqlCode = generateSQL();
+      const currentSqlInsert = generateDataInsertSQL(nodes, tableData);
+
+      const response = await fetch('http://localhost:8080/api/databases', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          name: name,
-          schema: sqlCode
+          Name: name,
+          Schema: currentSqlCode ,
+          SchemaInsert: currentSqlInsert 
         })
       });
 
       if (!response.ok) throw new Error('Ошибка сохранения');
+      setSqlCode(currentSqlCode);
+      setsqlCodeInsert(currentSqlInsert);
       setShow(false);
       alert('База данных успешно создана!');
     } catch (error) {
       alert(error.message);
     }
   };
+  
 
   return (
     <>
       <Button variant="success" onClick={() => setShow(true)}>
-        Сохранить базу данных
+        Сохранить
       </Button>
 
       <Modal show={show} onHide={() => setShow(false)}>
@@ -53,7 +64,7 @@ export default function SaveDatabaseButton({ sqlCode }) {
             Отмена
           </Button>
           <Button variant="primary" onClick={handleSave}>
-            Сохранить
+            Далее
           </Button>
         </Modal.Footer>
       </Modal>

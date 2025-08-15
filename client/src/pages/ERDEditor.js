@@ -18,10 +18,9 @@ import {
   Table, 
   InputGroup, 
   Container,
-  Row,
-  Col,
   Card
 } from 'react-bootstrap';
+import { Tab, Nav, Row, Col } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import "bootstrap-icons/font/bootstrap-icons.css";
 import './ERDEditor.css';
@@ -29,6 +28,8 @@ import './ERDEditor.css';
 import Sidebar from '../components/Sidebar';
 import EntityNode from '../components/EntityNode';
 import CustomEdge from '../components/CustomEdge';
+import Task_manage from './Task_manage';
+import TaskPreview from './TaskPreview';
 
 const nodeTypes = { entity: EntityNode };
 const edgeTypes = {
@@ -57,6 +58,9 @@ export default function ERDEditor() {
   const [edges, setEdges] = useState([]);
   const [activeNodeId, setActiveNodeId] = useState(null);
   const [activeEdgeId, setActiveEdgeId] = useState(null);
+  const [activeTab, setActiveTab] = useState('ERD');
+  const [sidebarActiveTab, setSidebarActiveTab] = useState('tables');
+  const [tableData, setTableData] = useState([]);
 
   const updateEdgeRelation = useCallback((edgeId, newRelation) => {
   setEdges(eds => eds.map(edge => {
@@ -88,7 +92,6 @@ export default function ERDEditor() {
   }, []);
 
   const updateEdgeAttributes = useCallback((nodeId, oldAttrName, newAttrName) => {
-    console.log(nodeId, oldAttrName, newAttrName);
   setEdges(eds => eds.map(edge => {
     // Обновляем sourceHandle если он относится к измененному атрибуту
     if (edge.source === nodeId && edge.sourceHandle.includes(oldAttrName)) {
@@ -188,7 +191,6 @@ const addNewNode = useCallback((entityName, attributes) => {
 
     setNodes(prevNodes => [...prevNodes, newNode]);
     setActiveNodeId(newNode.id);
-    console.log(edges);
   }, [nodes]);
 
   const onConnect = useCallback((params) => {
@@ -295,7 +297,62 @@ const getSqlType = (type) => {
   return typeMap[type.toLowerCase()] || type.toUpperCase();
 };
 
-const [sqlCode, setSqlCode] = useState('');
+const generateDataInsertSQL = (nodes, tableData, options = {}) => {
+  const defaults = {
+    batchSize: 100,     // Максимальное количество строк в одном INSERT
+    truncateFirst: true // Добавлять TRUNCATE перед вставкой
+  };
+  const config = { ...defaults, ...options };
+
+  let sqlCodeInsert = '-- SQL для заполнения таблиц данными\n\n';
+  sqlCodeInsert += 'BEGIN TRANSACTION;\n\n';
+
+  // Генерируем SQL для каждой таблицы
+  nodes.forEach(node => {
+    const tableName = node.data.label;
+    const columns = node.data.attributes;
+    const dataRows = tableData[tableName] || [];
+
+    if (!dataRows.length) return;
+
+    // Добавляем TRUNCATE если нужно
+    if (config.truncateFirst) {
+      sqlCodeInsert += `TRUNCATE TABLE ${tableName} CASCADE;\n\n`;
+    }
+
+    // Разбиваем данные на батчи
+    for (let i = 0; i < dataRows.length; i += config.batchSize) {
+      const batch = dataRows.slice(i, i + config.batchSize);
+      const columnNames = columns.map(col => `"${col.name}"`).join(', ');
+
+      sqlCodeInsert += `INSERT INTO ${tableName} (${columnNames})\nVALUES\n`;
+
+      // Добавляем строки данных
+      sqlCodeInsert += batch.map(row => {
+        const values = columns.map(col => {
+          const value = row[col.name];
+          
+          // Обработка разных типов данных
+          if (value === null || value === undefined) return 'NULL';
+          
+          return `"${value}"`
+        }).join(', ');
+
+        return `  (${values})`;
+      }).join(',\n');
+
+      sqlCodeInsert += ';\n\n';
+    }
+  });
+
+  sqlCodeInsert += 'COMMIT;\n';
+
+  console.log(sqlCodeInsert)
+
+  return sqlCodeInsert;
+}
+
+const [sqlCodeInsert, setSqlCode] = useState('');
 
 const showGeneratedSQL = () => {
   setSqlCode(generateSQL());
@@ -381,57 +438,100 @@ const importSchema = (e) => {
   e.target.value = ''; // Сброс значения для возможности повторного выбора того же файла
 };
 
-  //конец sql
-
-  return (
-    <div className="erd-container d-flex w-100 h-100 position-relative overflow-hidden">
-      <div className="sidebar-wrapper">
-      <Sidebar 
-        nodes={nodes}
-        edges={edges}
-        activeNodeId={activeNodeId}
-        activeEdgeId={activeEdgeId}
-        setActiveNodeId={setActiveNodeId}
-        setActiveEdgeId={setActiveEdgeId}
-        addNewNode={addNewNode}
-        updateNodeAttributes={updateNodeAttributes}
-        updateEdgeRelation={updateEdgeRelation}
-        updateEdgeAttributes={updateEdgeAttributes}
-        deleteEdge={deleteEdge}
-        isTableNameUnique={isTableNameUnique}
-        onExport={exportSchema}
-        onImport={importSchema}
-        onGenerateSQL={showGeneratedSQL}
-      />
-      </div>
-      <div className="reactflow-wrapper position-relative flex-grow-1 h-100">
-        <ReactFlow
-  nodes={nodes}
-  edges={edges}
-  onNodesChange={onNodesChange}
-  onEdgesChange={onEdgesChange}
-  onConnect={onConnect}
-  nodeTypes={nodeTypes}
-  edgeTypes={edgeTypes}
-  proOptions={{ dark: true }}
-  fitView
->
-  <MiniMap style={{ backgroundColor: '#2d3748' }}/>
-  <Background 
-    variant="dots" 
-    color="#4a5568"
-    gap={16} 
-    size={1} 
-  />
-  <Controls 
-    style={{ 
+const flowContent = useMemo(() => (
+  <ReactFlow
+    nodes={nodes}
+    edges={edges}
+    onNodesChange={onNodesChange}
+    onEdgesChange={onEdgesChange}
+    onConnect={onConnect}
+    nodeTypes={nodeTypes}
+    edgeTypes={edgeTypes}
+    proOptions={{ dark: true }}
+    fitView
+  >
+    <MiniMap style={{ backgroundColor: '#2d3748' }}/>
+    <Background variant="dots" color="#4a5568" gap={16} size={1} />
+    <Controls style={{ 
       backgroundColor: '#2d3748', 
       borderRadius: '4px',
       boxShadow: '0 2px 10px rgba(0,0,0,0.5)' 
-    }} 
-  />
-</ReactFlow>
-      </div>
-    </div>
+    }} />
+  </ReactFlow>
+), [nodes, edges, activeTab]);
+
+  //конец sql
+
+  return (
+    <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
+      {/* Кнопки переключения вкладок */}
+      <Nav variant="tabs" className="position-relative nav-justified">
+        <Nav.Item className="">
+          <Nav.Link eventKey="ERD">
+            Создание базы данных
+          </Nav.Link>
+        </Nav.Item>
+
+        <Nav.Item className="">
+          <Nav.Link eventKey="manage">
+            Заполнение таблиц
+          </Nav.Link>
+        </Nav.Item>
+
+        <Nav.Item className="">
+          <Nav.Link eventKey="task">
+            Формулировка задачи
+          </Nav.Link>
+        </Nav.Item>
+      </Nav>
+
+      <Tab.Content className="d-flex w-100 h-100 overflow-hidden">
+        <Tab.Pane className="d-flex w-100 h-100" eventKey="ERD" forceMount={activeTab !== "ERD"}>
+          <div className="d-flex w-100 h-100">
+            <div className="sidebar-wrapper">
+              <Sidebar 
+                nodes={nodes}
+                edges={edges}
+                activeNodeId={activeNodeId}
+                activeEdgeId={activeEdgeId}
+                setActiveNodeId={setActiveNodeId}
+                setActiveEdgeId={setActiveEdgeId}
+                addNewNode={addNewNode}
+                updateNodeAttributes={updateNodeAttributes}
+                updateEdgeRelation={updateEdgeRelation}
+                updateEdgeAttributes={updateEdgeAttributes}
+                deleteEdge={deleteEdge}
+                isTableNameUnique={isTableNameUnique}
+                onExport={exportSchema}
+                onImport={importSchema}
+                generateSQL={generateSQL}
+                generateDataInsertSQL={generateDataInsertSQL}
+                activeTab={sidebarActiveTab}
+                setActiveTab={setSidebarActiveTab}
+                tableData={tableData}
+              />
+              </div>
+              <div className="d-flex reactflow-wrapper position-relative flex-grow-1 h-100">
+                {activeTab === "ERD" && flowContent}
+            </div>
+          </div>
+        </Tab.Pane>
+
+        <Tab.Pane className="d-flex w-100 h-100" eventKey="manage" forceMount={activeTab !== "manage"}>
+          <Task_manage 
+          tableData={tableData}
+          setTableData={setTableData}
+          nodes={nodes} 
+          />
+        </Tab.Pane>
+
+        <Tab.Pane className="d-flex w-100 h-100" eventKey="task" forceMount={activeTab !== "task"}>
+          <TaskPreview 
+            nodes={nodes} 
+            edges={edges}
+          />
+        </Tab.Pane>
+      </Tab.Content> 
+    </Tab.Container>
   );
 }

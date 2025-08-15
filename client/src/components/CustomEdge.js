@@ -2,6 +2,15 @@ import { getBezierPath } from 'reactflow';
 
 import { useCallback, useState, useMemo} from 'react';
 
+import ReactFlow, {
+  Controls,
+  Background,
+  MiniMap,
+  BaseEdge,
+  Panel,
+  EdgeLabelRenderer
+} from 'reactflow';
+
 export default function CustomEdge({
   id,
   sourceX,
@@ -13,14 +22,14 @@ export default function CustomEdge({
   data,
   style = {},
 }) {
-  const [edgePath] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  });
+  const [edgePath, labelX, labelY] = getBezierPath({
+      sourceX,
+      sourceY,
+      sourcePosition,
+      targetX,
+      targetY,
+      targetPosition,
+    });
 
   // Определяем маркеры в зависимости от типа связи
   const { markerStart, markerEnd, edgeStyle } = useMemo(() => {
@@ -65,26 +74,36 @@ export default function CustomEdge({
   }
 }, [data?.relationType, style]);
 
+const edgeColor = '#6c757d';
+
   return (
     <>
-      <path
+      <BaseEdge
         id={id}
-        style={edgeStyle}
         className="react-flow__edge-path"
-        d={edgePath}
-        markerStart={markerStart}
+        path={edgePath}
         markerEnd={markerEnd}
+        style={{ stroke: edgeColor, strokeWidth: 2 }}
       />
-      <text>
-        <textPath
+      <EdgeLabelRenderer>
+      <div
           href={`#${id}`}
-          style={{ fontSize: 12, fill: '#f8f9fa' }}
+          style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              background: edgeColor,
+              color: 'white',
+              padding: '2px 8px',
+              borderRadius: '10px',
+              fontSize: '12px',
+              fontWeight: 'bold',
+            }}
           startOffset="50%"
           textAnchor="middle"
         >
           {data.label}
-        </textPath>
-      </text>
+        </div>
+      </EdgeLabelRenderer>
     </>
   );
 }

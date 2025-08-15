@@ -18,20 +18,26 @@ const Sidebar = React.memo(({
   deleteEdge,
   onExport,
   onImport,
-  sqlCode
+  generateSQL,
+  activeTab,
+  setActiveTab,
+  generateDataInsertSQL,
+  tableData
 }) => {
-  const [activeTab, setActiveTab] = useState('tables');
 
   return (
-    <aside className="bg-dark border-end h-100 " style={{ width: '380px'}}>
+    <aside className="bg-dark h-100" style={{ width: '380px'}}>
       <div className="p-2 border-bottom">
         <DatabaseSaveButton 
-          sqlCode={sqlCode}
+          nodes={nodes}
+          tableData={tableData}
+          generateSQL={generateSQL}
+          generateDataInsertSQL={generateDataInsertSQL}
         />
       </div>
       <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
           {/* Кнопки переключения вкладок */}
-          <Nav variant="tabs" className="flex-row">
+          <Nav variant="tabs" className="flex-row nav-justified">
             <Nav.Item>
               <Nav.Link eventKey="tables">
                 <i className="bi bi-table me-2"></i>
@@ -46,7 +52,7 @@ const Sidebar = React.memo(({
             </Nav.Item>
           </Nav>
           <Tab.Content className="p-2 overflow-auto">
-            <Tab.Pane eventKey="tables">
+            <Tab.Pane eventKey="tables" forceMount={activeTab !== "tables"}>
               <TablesList 
                 nodes={nodes} 
                 addNewNode={addNewNode} 
@@ -56,7 +62,7 @@ const Sidebar = React.memo(({
                 updateEdgeAttributes={updateEdgeAttributes}
               />
             </Tab.Pane>
-            <Tab.Pane eventKey="relations">
+            <Tab.Pane eventKey="relations" forceMount={activeTab !== "relations"}>
               <RelationsList 
                 edges={edges}
                 activeEdgeId={activeEdgeId}

@@ -2,15 +2,13 @@ package routes
 
 import (
 	"net/http"
-	"time"
-	
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
-	"sql_edit/models"
-	"sql_edit/database"
-)
 
-var jwtSecret = []byte("your_secret_key_here")
+	"sql_edit/auth"
+	"sql_edit/database"
+	"sql_edit/models"
+
+	"github.com/gin-gonic/gin"
+)
 
 func Register(c *gin.Context) {
 	var user models.User
@@ -59,19 +57,14 @@ func Login(c *gin.Context) {
 	}
 
 	// Генерируем JWT-токен
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":  user.ID,
-		"exp": time.Now().Add(time.Hour * 24).Unix(), // Токен действует 24 часа
-	})
-
-	tokenString, err := token.SignedString(jwtSecret)
+	token, err := auth.GenerateToken(user.ID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"token": tokenString,
+		"token": token,
 		"user": gin.H{
 			"id":       user.ID,
 			"username": user.Username,

@@ -18,19 +18,19 @@ export default function Navbar({ isAuth, setAuth }) {
             {!isAuth ? (
               <>
                 <li className="nav-item">
-                  <NavLink to="/login" className="nav-link">Login</NavLink>
+                  <NavLink to="/login" className="nav-link">Войти</NavLink>
                 </li>
                 <li className="nav-item">
-                  <NavLink to="/register" className="nav-link">Register</NavLink>
+                  <NavLink to="/register" className="nav-link">Зарегистрироваться</NavLink>
                 </li>
               </>
             ) : (
               <>
                 <li className="nav-item">
-                  <NavLink to="/profile" className="nav-link">Profile</NavLink>
+                  <NavLink to="/profile" className="nav-link">Профиль</NavLink>
                 </li>
                 <li className="nav-item">
-                  <button className="btn btn-link nav-link" onClick={handleLogout}>Logout</button>
+                  <button className="btn btn-link nav-link" onClick={handleLogout}>Выйти</button>
                 </li>
               </>
             )}

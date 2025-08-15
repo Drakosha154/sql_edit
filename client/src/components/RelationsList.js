@@ -44,14 +44,14 @@ const RelationsList = ({edges, activeEdgeId, setActiveEdgeId, updateEdgeRelation
                                 <div class="d-flex flex-column">
                                     Основная таблица
                                     <div class="d-flex">
-                                        {console.log(edges)}
+                                        
                                         {edge.data?.sourceLabel || edge.source}
                                     </div>
                                 </div>
                                 <div class="d-flex flex-column">
                                     Справочная таблица
                                 <div class="d-flex">
-                                        {console.log(edges)}
+                                        
                                         {edge.data?.targetLabel || edge.target}
                                     </div>
                                 </div>

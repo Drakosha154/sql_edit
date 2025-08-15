@@ -19,7 +19,7 @@ function App() {
   }, []);
 
   return (
-    <div className="d-flex flex-column vh-100">
+    <div className="erd-container d-flex flex-column vh-100">
       <Navbar isAuth={isAuth} setAuth={setAuth} />
         <Routes>
           <Route path="/create" element={<ERDEditor />} />

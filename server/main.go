@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-contrib/cors"
+	"github.com/joho/godotenv"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,6 +21,10 @@ func main() {
 		User:     "postgres",
 		Password: "123",
 		DBName:   "sql_learn",
+	}
+
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
 	}
 
 	// Инициализация БД
@@ -55,6 +60,7 @@ func main() {
 	authGroup := r.Group("/api")
 	authGroup.Use(middleware.AuthMiddleware())
 	{
+		authGroup.POST("/databases", routes.SaveDatabase)
 	}
 
 	// Выведите все зарегистрированные маршруты
