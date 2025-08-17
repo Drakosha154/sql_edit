@@ -8,7 +8,8 @@ import {
   Button,
   Table,
   InputGroup,
-  Modal
+  Modal,
+  Alert
 } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -22,6 +23,9 @@ export default function Task_manage({
 
   // Состояния
   const [selectedTable, setSelectedTable] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [sqlCode, setSqlCode] = useState('');
+  const [importError, setImportError] = useState(null);
   const [newRow, setNewRow] = useState({});
   const [showGenerator, setShowGenerator] = useState(false);
   const [generatorConfig, setGeneratorConfig] = useState({
@@ -122,6 +126,79 @@ export default function Task_manage({
 
   const currentTableData = selectedTable ? tableData[selectedTable] || [] : [];
 
+  // Функция для парсинга SQL вставки данных
+  const parseInsertSQL = (sql) => {
+    try {
+      const result = {};
+    
+    // Регулярное выражение для поиска всех INSERT запросов
+    const insertRegex = /INSERT\s+INTO\s+([^\s(]+)\s*\(([^)]+)\)\s*VALUES\s*([^;]+);/gi;
+    
+    let match;
+    
+    while ((match = insertRegex.exec(sql)) !== null) {
+      const tableName = match[1].trim().replace(/"/g, '');
+      const columns = match[2].split(',').map(c => c.trim().replace(/"/g, ''));
+      const valuesMatch = match[3].match(/\(([^)]+)\)/g);
+      
+      if (!result[tableName]) {
+        result[tableName] = [];
+      }
+      
+      valuesMatch.forEach(valuesStr => {
+        const values = valuesStr
+          .replace(/[()]/g, '')
+          .split(',')
+          .map(v => v.trim().replace(/^'(.*)'$/, '$1')); // Удаляем кавычки вокруг значений
+          
+        if (columns.length === values.length) {
+          const row = {};
+          columns.forEach((col, i) => {
+            // Преобразуем 'NULL' в null и числа в числа
+            row[col] = values[i] === 'NULL' ? null : 
+                       !isNaN(values[i]) ? Number(values[i]) : 
+                       values[i];
+          });
+          result[tableName].push(row);
+        }
+      });
+    }
+
+    console.log(result);
+    
+    return result;
+  } catch (error) {
+    throw new Error(`Ошибка парсинга SQL: ${error.message}`);
+  }
+  };
+
+  const handleImportSQL = (sql = sqlCode) => {
+    try {
+      
+      const parsedData = parseInsertSQL(sqlCode);
+
+      const updatedTableData = { ...tableData };
+      
+
+      for (const tableName in parsedData) {
+      if (parsedData.hasOwnProperty(tableName)) {
+        // Объединяем существующие данные с новыми для каждой таблицы
+        updatedTableData[tableName] = [
+          ...(updatedTableData[tableName] || []),
+          ...parsedData[tableName]
+        ];
+      }
+    }
+      
+      setTableData(updatedTableData);
+      setSqlCode('');
+      setShowImportModal(false);
+      setImportError(null);
+    } catch (error) {
+      setImportError(error.message);
+    }
+  };
+
   return (
     <Container fluid className="py-4 h-100">
       <Row className="h-100">
@@ -179,6 +256,13 @@ export default function Task_manage({
                   >
                     <i className="bi bi-magic"></i> Сгенерировать данные
                   </Button>
+                  <Button 
+                    variant="outline-primary" 
+                    onClick={() => setShowImportModal(true)}
+                    className="w-100 mt-3"
+                  >
+                    <i className="bi bi-file-earmark-arrow-down"></i> Импорт данных SQL
+                  </Button>
                 </>
               )}
             </Card.Body>
@@ -225,6 +309,54 @@ export default function Task_manage({
           </Card>
         </Col>
       </Row>
+
+      {/* Модальное окно импорта SQL */}
+      <Modal show={showImportModal} onHide={() => setShowImportModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Импорт данных SQL</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group className="mb-3">
+            <Form.Label>Выберите таблицу для импорта:</Form.Label>
+            <Form.Select
+              value={selectedTable}
+              onChange={(e) => setSelectedTable(e.target.value)}
+            >
+              <option value="">-- Выберите таблицу --</option>
+              {nodes.map(node => (
+                <option key={node.data.label} value={node.data.label}>
+                  {node.data.label}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+          
+          <Form.Group>
+            <Form.Label>Введите SQL-запросы INSERT для заполнения таблицы:</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={10}
+              value={sqlCode}
+              onChange={(e) => setSqlCode(e.target.value)}
+              placeholder={`Пример:\nINSERT INTO products (id, name, price) VALUES \n(1, 'Ноутбук', 999.99),\n(2, 'Мышь', 19.99);`}
+            />
+          </Form.Group>
+          
+          {importError && (
+            <Alert variant="danger" className="mt-3">
+              {importError}
+            </Alert>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowImportModal(false)}>
+            Отмена
+          </Button>
+          <Button variant="primary" onClick={handleImportSQL}>
+            Импортировать
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* Модальное окно генератора данных */}
       <Modal show={showGenerator} onHide={() => setShowGenerator(false)}>

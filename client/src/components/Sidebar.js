@@ -17,7 +17,7 @@ const Sidebar = React.memo(({
   updateEdgeAttributes,
   deleteEdge,
   onExport,
-  onImport,
+  setShowImportModal,
   generateSQL,
   activeTab,
   setActiveTab,
@@ -34,6 +34,13 @@ const Sidebar = React.memo(({
           generateSQL={generateSQL}
           generateDataInsertSQL={generateDataInsertSQL}
         />
+        <button 
+          variant="outline-primary" 
+          onClick={() => setShowImportModal(true)}
+          className="btn border ms-2"
+        >
+          <i className="bi bi-file-earmark-arrow-down"></i> Импорт SQL
+        </button>
       </div>
       <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
           {/* Кнопки переключения вкладок */}

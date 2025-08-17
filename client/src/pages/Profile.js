@@ -3,36 +3,81 @@ import { NavLink, useNavigate } from "react-router-dom";
 
 export default function Profile() {
     const [databases, setDatabases] = useState([]);
+    const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchDatabases = async () => {
-            const response = await fetch('/api/databases', {
+    const fetchUserDatabases = async () => {
+        try {
+            const response = await fetch('http://localhost:8080/api/getdatabases', {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
             });
+            
+            // Проверяем, что ответ JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`Ожидался JSON, но получен: ${text.substring(0, 100)}...`);
+            }
+            
             const data = await response.json();
             setDatabases(data.databases);
-        };
-        fetchDatabases();
-    }, []);
+        } catch (error) {
+            console.error("Ошибка загрузки:", error);
+            alert("Ошибка загрузки: " + error.message);
+        }
+    };
+    fetchUserDatabases();
+}, []);
+
+    const handleEdit = (dbId) => {
+        navigate(`/create/${dbId}`); // Переход с ID базы данных
+    };
+
+    const handleDelete = async (dbId) => {
+        try {
+            // Подтверждение перед удалением
+            if (!window.confirm('Вы уверены, что хотите удалить эту базу данных?')) {
+                return;
+            }
+
+            const response = await fetch(`http://localhost:8080/api/databases/${dbId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Ошибка при удалении базы данных');
+            }
+
+            // Обновляем список баз данных после удаления
+            setDatabases(databases.filter(db => db.ID !== dbId));
+            alert('База данных успешно удалена');
+        } catch (error) {
+            console.error("Ошибка удаления:", error);
+            alert("Ошибка удаления: " + error.message);
+        }
+    };
 
     return (
         <div className="container mt-4">
             <h2>Мои базы данных</h2>
-            <div>
+            <div className="btn border mt-2">
                 <NavLink to="/create" className="nav-link">Создать задание</NavLink>
             </div>
-            <div className="list-group">
+            <div className="list-group mt-3">
                 {databases.map(db => (
-                    <div key={db.id} className="list-group-item">
-                        <h5>{db.name}</h5>
-                        <small>{db.db_name}</small>
+                    <div key={db.ID} className="list-group-item border mt-2">
+                        <h5>{db.Name}</h5>
+                        <small>{db.CreatedAt}</small>
                         <div className="mt-2">
-                            <button className="btn btn-sm btn-outline-primary me-2">
-                                Открыть
+                            <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleEdit(db.ID)}>
+                                Редактировать
                             </button>
-                            <button className="btn btn-sm btn-outline-danger">
+                            <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(db.ID)}>
                                 Удалить
                             </button>
                         </div>

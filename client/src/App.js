@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import Navbar from './components/navbar';
 import ERDEditor from './pages/ERDEditor';
 import Login from './pages/Login';
@@ -22,7 +22,7 @@ function App() {
     <div className="erd-container d-flex flex-column vh-100">
       <Navbar isAuth={isAuth} setAuth={setAuth} />
         <Routes>
-          <Route path="/create" element={<ERDEditor />} />
+          <Route path="/create/:id?" element={<ERDEditor />} />
           <Route path="/login" element={<Login setAuth={setAuth} />} />
           <Route path="/register" element={<Register setAuth={setAuth} />} />
           <Route path="/profile" element={<Profile />} />

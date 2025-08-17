@@ -61,6 +61,9 @@ func main() {
 	authGroup.Use(middleware.AuthMiddleware())
 	{
 		authGroup.POST("/databases", routes.SaveDatabase)
+		authGroup.GET("/getdatabases", routes.GetUserDatabases)
+		authGroup.GET("/databases/:id", routes.GetDatabasesByID)
+		authGroup.DELETE("/databases/:id", routes.DelDatabasesByID)
 	}
 
 	// Выведите все зарегистрированные маршруты

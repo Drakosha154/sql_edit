@@ -1,0 +1,149 @@
+-- Создаем таблицу Product без внешних ключей
+CREATE TABLE Product (
+    maker TEXT NOT NULL,
+    model TEXT PRIMARY KEY,
+    type TEXT CHECK (type IN ('PC', 'Laptop', 'Printer'))
+);
+
+-- Создаем таблицу PC без внешнего ключа
+CREATE TABLE PC (
+    code INT PRIMARY KEY,
+    model TEXT NOT NULL,
+    speed INT NOT NULL,
+    ram INT NOT NULL,
+    hd INT NOT NULL,
+    cd TEXT NOT NULL,
+    price INT NOT NULL
+);
+
+-- Создаем таблицу Laptop без внешнего ключа
+CREATE TABLE Laptop (
+    code INT PRIMARY KEY,
+    model TEXT NOT NULL,
+    speed INT NOT NULL,
+    ram INT NOT NULL,
+    hd INT NOT NULL,
+    price INT NOT NULL,
+    screen INT NOT NULL
+);
+
+-- Создаем таблицу Printer без внешнего ключа
+CREATE TABLE Printer (
+    code INT PRIMARY KEY,
+    model TEXT NOT NULL,
+    color TEXT CHECK (color IN ('y', 'n')),
+    type TEXT CHECK (type IN ('Laser', 'Jet', 'Matrix')),
+    price INT NOT NULL
+);
+
+-- Добавляем внешние ключи через ALTER TABLE
+ALTER TABLE PC ADD CONSTRAINT fk_pc_product
+    FOREIGN KEY (model) REFERENCES Product(model);
+
+ALTER TABLE Laptop ADD CONSTRAINT fk_laptop_product
+    FOREIGN KEY (model) REFERENCES Product(model);
+
+ALTER TABLE Printer ADD CONSTRAINT fk_printer_product
+    FOREIGN KEY (model) REFERENCES Product(model);
+
+-- Добавляем проверочные ограничения
+ALTER TABLE Product ADD CONSTRAINT chk_product_type
+    CHECK (type IN ('PC', 'Laptop', 'Printer'));
+
+ALTER TABLE Printer ADD CONSTRAINT chk_printer_color
+    CHECK (color IN ('y', 'n'));
+
+ALTER TABLE Printer ADD CONSTRAINT chk_printer_type
+    CHECK (type IN ('Laser', 'Jet', 'Matrix'));
+
+-- Заполнение таблицы Product
+INSERT INTO Product (maker, model, type) VALUES
+('A', '1001', 'PC'),
+('A', '1002', 'PC'),
+('A', '1003', 'Laptop'),
+('A', '1004', 'Printer'),
+('B', '2001', 'PC'),
+('B', '2002', 'Laptop'),
+('B', '2003', 'Laptop'),
+('B', '2004', 'Printer'),
+('C', '3001', 'PC'),
+('C', '3002', 'PC'),
+('C', '3003', 'Laptop'),
+('C', '3004', 'Printer'),
+('D', '4001', 'PC'),
+('D', '4002', 'Laptop'),
+('D', '4003', 'Printer'),
+('E', '5001', 'PC'),
+('E', '5002', 'Laptop'),
+('E', '5003', 'Printer'),
+('F', '6001', 'PC'),
+('F', '6002', 'Laptop');
+
+-- Заполнение таблицы PC
+INSERT INTO PC (code, model, speed, ram, hd, cd, price) VALUES
+(1, '1001', 2400, 8, 500, '24x', 599.99),
+(2, '1002', 3200, 16, 1000, '48x', 899.99),
+(3, '2001', 2800, 8, 500, '24x', 649.99),
+(4, '3001', 3600, 16, 1000, '48x', 999.99),
+(5, '3002', 2400, 8, 500, '24x', 599.99),
+(6, '4001', 3200, 16, 1000, '48x', 899.99),
+(7, '5001', 2800, 8, 500, '24x', 649.99),
+(8, '6001', 3600, 32, 2000, '64x', 1299.99),
+(9, '1001', 2400, 8, 500, '24x', 599.99),
+(10, '1002', 3200, 16, 1000, '48x', 899.99),
+(11, '2001', 2800, 8, 500, '24x', 649.99),
+(12, '3001', 3600, 16, 1000, '48x', 999.99),
+(13, '3002', 2400, 8, 500, '24x', 599.99),
+(14, '4001', 3200, 16, 1000, '48x', 899.99),
+(15, '5001', 2800, 8, 500, '24x', 649.99),
+(16, '6001', 3600, 32, 2000, '64x', 1299.99),
+(17, '1001', 2400, 8, 500, '24x', 599.99),
+(18, '1002', 3200, 16, 1000, '48x', 899.99),
+(19, '2001', 2800, 8, 500, '24x', 649.99),
+(20, '3001', 3600, 16, 1000, '48x', 999.99);
+
+-- Заполнение таблицы Laptop
+INSERT INTO Laptop (code, model, speed, ram, hd, price, screen) VALUES
+(21, '1003', 2200, 8, 500, 799.99, 15),
+(22, '2002', 2400, 8, 500, 849.99, 14),
+(23, '2003', 2800, 16, 1000, 1199.99, 17),
+(24, '3003', 3200, 16, 1000, 1299.99, 15),
+(25, '4002', 2400, 8, 500, 899.99, 14),
+(26, '5002', 2800, 16, 1000, 1099.99, 15),
+(27, '6002', 3600, 32, 2000, 1799.99, 17),
+(28, '1003', 2200, 8, 500, 799.99, 15),
+(29, '2002', 2400, 8, 500, 849.99, 14),
+(30, '2003', 2800, 16, 1000, 1199.99, 17),
+(31, '3003', 3200, 16, 1000, 1299.99, 15),
+(32, '4002', 2400, 8, 500, 899.99, 14),
+(33, '5002', 2800, 16, 1000, 1099.99, 15),
+(34, '6002', 3600, 32, 2000, 1799.99, 17),
+(35, '1003', 2200, 8, 500, 799.99, 15),
+(36, '2002', 2400, 8, 500, 849.99, 14),
+(37, '2003', 2800, 16, 1000, 1199.99, 17),
+(38, '3003', 3200, 16, 1000, 1299.99, 15),
+(39, '4002', 2400, 8, 500, 899.99, 14),
+(40, '5002', 2800, 16, 1000, 1099.99, 15);
+
+-- Заполнение таблицы Printer
+INSERT INTO Printer (code, model, color, type, price) VALUES
+(41, '1004', 'y', 'Jet', 199.99),
+(42, '2004', 'n', 'Laser', 299.99),
+(43, '3004', 'y', 'Matrix', 149.99),
+(44, '4003', 'n', 'Laser', 349.99),
+(45, '5003', 'y', 'Jet', 249.99),
+(46, '1004', 'y', 'Jet', 199.99),
+(47, '2004', 'n', 'Laser', 299.99),
+(48, '3004', 'y', 'Matrix', 149.99),
+(49, '4003', 'n', 'Laser', 349.99),
+(50, '5003', 'y', 'Jet', 249.99),
+(51, '1004', 'y', 'Jet', 199.99),
+(52, '2004', 'n', 'Laser', 299.99),
+(53, '3004', 'y', 'Matrix', 149.99),
+(54, '4003', 'n', 'Laser', 349.99),
+(55, '5003', 'y', 'Jet', 249.99),
+(56, '1004', 'y', 'Jet', 199.99),
+(57, '2004', 'n', 'Laser', 299.99),
+(58, '3004', 'y', 'Matrix', 149.99),
+(59, '4003', 'n', 'Laser', 349.99),
+(60, '5003', 'y', 'Jet', 249.99);

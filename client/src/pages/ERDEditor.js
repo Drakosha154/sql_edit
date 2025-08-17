@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import ReactFlow, {
   Controls,
   Background,
@@ -18,8 +18,9 @@ import {
   Table, 
   InputGroup, 
   Container,
-  Card
+  Card,
 } from 'react-bootstrap';
+import { useParams } from 'react-router-dom';
 import { Tab, Nav, Row, Col } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -30,6 +31,11 @@ import EntityNode from '../components/EntityNode';
 import CustomEdge from '../components/CustomEdge';
 import Task_manage from './Task_manage';
 import TaskPreview from './TaskPreview';
+import SolutionView from './SolutionView';
+
+import { parseSQL } from '../utils/sqlParser';
+
+
 
 const nodeTypes = { entity: EntityNode };
 const edgeTypes = {
@@ -61,6 +67,40 @@ export default function ERDEditor() {
   const [activeTab, setActiveTab] = useState('ERD');
   const [sidebarActiveTab, setSidebarActiveTab] = useState('tables');
   const [tableData, setTableData] = useState([]);
+  const [sqlCodeInsert, setSqlCodeInsert] = useState('');
+  const [sqlCode, setSqlCode] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importError, setImportError] = useState(null);
+
+  const { id } = useParams();
+    
+  useEffect(() => {
+    const fetchUserDatabases = async () => {
+            try {
+              const response = await fetch(`http://localhost:8080/api/databases/${id}`, {
+                headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+              });
+            
+            // Проверяем, что ответ JSON
+              const contentType = response.headers.get('content-type');
+              if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`Ожидался JSON, но получен: ${text.substring(0, 100)}...`);
+              }
+            
+            const data = await response.json();
+              console.log(data);
+              handleImportSQL(data.schema);
+              handleImportSQLInsert(data.data);
+        } catch (error) {
+              console.error("Ошибка загрузки:", error);
+              alert("Ошибка загрузки: " + error.message);
+            }
+    };
+    fetchUserDatabases();  
+}, []);
 
   const updateEdgeRelation = useCallback((edgeId, newRelation) => {
   setEdges(eds => eds.map(edge => {
@@ -352,10 +392,8 @@ const generateDataInsertSQL = (nodes, tableData, options = {}) => {
   return sqlCodeInsert;
 }
 
-const [sqlCodeInsert, setSqlCode] = useState('');
-
 const showGeneratedSQL = () => {
-  setSqlCode(generateSQL());
+  setSqlCodeInsert(generateSQL());
 };
 
 const SQLModal = ({ show, sql, onClose }) => {
@@ -392,6 +430,7 @@ const SQLModal = ({ show, sql, onClose }) => {
   );
 };
 
+
 const exportSchema = () => {
   const schema = { 
     nodes, 
@@ -414,29 +453,126 @@ const exportSchema = () => {
   URL.revokeObjectURL(url);
 };
 
-const importSchema = (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = (event) => {
+const handleImportSQL = (sql = sqlCode) => {
     try {
-      const { nodes: importedNodes, edges: importedEdges } = JSON.parse(event.target.result);
+      const parsedData = parseSQL(sql); // Парсим SQL
       
-      // Валидация импортируемых данных
-      if (!Array.isArray(importedNodes) || !Array.isArray(importedEdges)) {
-        throw new Error('Некорректный формат файла');
+      // Создаем узлы для таблиц
+      const newNodes = parsedData.tables.map(table => ({
+        id: table.name,
+        type: 'entity',
+        position: { x: Math.random() * 500, y: Math.random() * 500 },
+        data: {
+          label: table.name,
+          attributes: table.columns.map(col => ({
+            id: `${table.name}-${col.name}`,
+            name: col.name,
+            type: col.type,
+            isPrimary: col.isPrimary,
+            isNullable: col.isNullable
+          }))
+        }
+      }));
+
+      // Создаем связи между таблицами
+      const newEdges = parsedData.foreignKeys.map(fk => ({
+        id: `edge-${fk.fromTable}-${fk.fromColumn}-${fk.toTable}-${fk.toColumn}`,
+        source: fk.fromTable,
+        target: fk.toTable,
+        sourceHandle: `${fk.fromTable}-${fk.fromColumn}`,
+        targetHandle: `${fk.toTable}-${fk.toColumn}`,
+        type: 'custom',
+        data: {
+          relationType: 'one-to-many',
+          label: '1:N',
+          sourceLabel: fk.fromTable,
+          targetLabel: fk.toTable,
+          sourceAttr: fk.fromColumn,
+          targetAttr: fk.toColumn
+        }
+      }));
+
+      setNodes(newNodes);
+      setEdges(newEdges);
+      setShowImportModal(false);
+      setSqlCode('');
+    } catch (error) {
+      setImportError(error.message);
+  }
+};
+
+// Функция для парсинга SQL вставки данных
+  const parseInsertSQL = (sql) => {
+    try {
+      const result = {};
+    
+    // Регулярное выражение для поиска всех INSERT запросов
+    const insertRegex = /INSERT\s+INTO\s+([^\s(]+)\s*\(([^)]+)\)\s*VALUES\s*([^;]+);/gi;
+    
+    let match;
+    
+    while ((match = insertRegex.exec(sql)) !== null) {
+      const tableName = match[1].trim().replace(/"/g, '');
+      const columns = match[2].split(',').map(c => c.trim().replace(/"/g, ''));
+      const valuesMatch = match[3].match(/\(([^)]+)\)/g);
+      
+      if (!result[tableName]) {
+        result[tableName] = [];
       }
       
-      setNodes(importedNodes);
-      setEdges(importedEdges);
+      valuesMatch.forEach(valuesStr => {
+        const values = valuesStr
+          .replace(/[()]/g, '')
+          .split(',')
+          .map(v => v.trim().replace(/^'(.*)'$/, '$1')); // Удаляем кавычки вокруг значений
+          
+        if (columns.length === values.length) {
+          const row = {};
+          columns.forEach((col, i) => {
+            // Преобразуем 'NULL' в null и числа в числа
+            row[col] = values[i] === 'NULL' ? null : 
+                       !isNaN(values[i]) ? Number(values[i]) : 
+                       values[i];
+          });
+          result[tableName].push(row);
+        }
+      });
+    }
+
+    console.log(result);
+    
+    return result;
+  } catch (error) {
+    throw new Error(`Ошибка парсинга SQL: ${error.message}`);
+  }
+  };
+
+  const handleImportSQLInsert = (sql) => {
+    try {
+      
+      const parsedData = parseInsertSQL(sql);
+
+      const updatedTableData = { ...tableData };
+      
+
+      for (const tableName in parsedData) {
+      if (parsedData.hasOwnProperty(tableName)) {
+        // Объединяем существующие данные с новыми для каждой таблицы
+        updatedTableData[tableName] = [
+          ...(updatedTableData[tableName] || []),
+          ...parsedData[tableName]
+        ];
+      }
+    }
+      
+      setTableData(updatedTableData);
+      setSqlCode('');
+      setShowImportModal(false);
+      setImportError(null);
     } catch (error) {
-      alert(`Ошибка при импорте: ${error.message}`);
+      setImportError(error.message);
     }
   };
-  reader.readAsText(file);
-  e.target.value = ''; // Сброс значения для возможности повторного выбора того же файла
-};
 
 const flowContent = useMemo(() => (
   <ReactFlow
@@ -464,6 +600,37 @@ const flowContent = useMemo(() => (
 
   return (
     <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
+      <Modal show={showImportModal} onHide={() => setShowImportModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Импорт SQL схемы</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group>
+            <Form.Label>Введите SQL код создания базы данных:</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={10}
+              value={sqlCode}
+              onChange={(e) => setSqlCode(e.target.value)}
+              placeholder={`Пример:\nCREATE TABLE users (\n  id INTEGER PRIMARY KEY,\n  name TEXT NOT NULL\n);\n\nCREATE TABLE posts (\n  id INTEGER PRIMARY KEY,\n  user_id INTEGER REFERENCES users(id),\n  title TEXT\n);`}
+            />
+          </Form.Group>
+          {importError && (
+            <div className="alert alert-danger mt-3">
+              {importError}
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowImportModal(false)}>
+            Отмена
+          </Button>
+          <Button variant="primary" onClick={() => handleImportSQL()}>
+            Импортировать
+          </Button>
+        </Modal.Footer>
+      </Modal>
+      
       {/* Кнопки переключения вкладок */}
       <Nav variant="tabs" className="position-relative nav-justified">
         <Nav.Item className="">
@@ -478,6 +645,12 @@ const flowContent = useMemo(() => (
           </Nav.Link>
         </Nav.Item>
 
+        <Nav.Item>
+          <Nav.Link eventKey="solution">
+            Итоговое решение
+          </Nav.Link>
+        </Nav.Item>
+
         <Nav.Item className="">
           <Nav.Link eventKey="task">
             Формулировка задачи
@@ -485,7 +658,7 @@ const flowContent = useMemo(() => (
         </Nav.Item>
       </Nav>
 
-      <Tab.Content className="d-flex w-100 h-100 overflow-hidden">
+      <Tab.Content className="d-flex w-100 h-100 overflow-auto">
         <Tab.Pane className="d-flex w-100 h-100" eventKey="ERD" forceMount={activeTab !== "ERD"}>
           <div className="d-flex w-100 h-100">
             <div className="sidebar-wrapper">
@@ -503,7 +676,7 @@ const flowContent = useMemo(() => (
                 deleteEdge={deleteEdge}
                 isTableNameUnique={isTableNameUnique}
                 onExport={exportSchema}
-                onImport={importSchema}
+                setShowImportModal={setShowImportModal}
                 generateSQL={generateSQL}
                 generateDataInsertSQL={generateDataInsertSQL}
                 activeTab={sidebarActiveTab}
@@ -522,6 +695,14 @@ const flowContent = useMemo(() => (
           tableData={tableData}
           setTableData={setTableData}
           nodes={nodes} 
+          />
+        </Tab.Pane>
+
+        <Tab.Pane className="d-flex w-100 h-100" eventKey="solution">
+          <SolutionView 
+            nodes={nodes}
+            edges={edges}
+            tableData={tableData}
           />
         </Tab.Pane>
 
