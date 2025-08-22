@@ -1,18 +1,51 @@
 import React, { useState } from 'react';
 import { Button, Modal, Form } from 'react-bootstrap';
 import { useNavigate } from "react-router-dom";
+import { useParams } from 'react-router-dom';
 
-export default function SaveDatabaseButton({ nodes, tableData, generateSQL, generateDataInsertSQL }) {
+function jsonToCsv(data) {
+  if (!data || data.length === 0) return '';
+  
+  // Получаем все уникальные ключи из объектов
+  const headers = [...new Set(data.flatMap(obj => Object.keys(obj)))];
+  
+  // Создаем заголовок CSV
+  let csv = headers.join(',') + '\n';
+  
+  // Добавляем данные
+  data.forEach(item => {
+    const row = headers.map(header => {
+      const value = item[header];
+      // Экранируем значения, которые содержат запятые или кавычки
+      if (value === null || value === undefined) return '';
+      const stringValue = String(value);
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    });
+    csv += row.join(',') + '\n';
+  });
+
+  
+  return csv;
+}
+
+export default function SaveDatabaseButton({ nodes, tableData, generateSQL, generateDataInsertSQL, taskDescription, result, setCsvDecision }) {
   const [show, setShow] = useState(false);
   const [sqlCode, setSqlCode] = useState('');
   const [sqlCodeInsert, setsqlCodeInsert] = useState('');
   const [name, setName] = useState('');
   const navigate = useNavigate();
 
-  const handleSave = async () => {
+  const { id } = useParams();
+
+  const handleSaveNew = async () => {
     try {
+  
       const currentSqlCode = generateSQL();
       const currentSqlInsert = generateDataInsertSQL(nodes, tableData);
+      const currentScv = jsonToCsv(result);
 
       const response = await fetch('http://localhost:8080/api/databases', {
         method: 'POST',
@@ -22,25 +55,66 @@ export default function SaveDatabaseButton({ nodes, tableData, generateSQL, gene
         },
         body: JSON.stringify({
           Name: name,
-          Schema: currentSqlCode ,
-          SchemaInsert: currentSqlInsert 
+          Schema: currentSqlCode,
+          SchemaInsert: currentSqlInsert,
+          Task: taskDescription,
+          Decision: currentScv
         })
       });
 
       if (!response.ok) throw new Error('Ошибка сохранения');
       setSqlCode(currentSqlCode);
       setsqlCodeInsert(currentSqlInsert);
+      setCsvDecision(currentScv);
       setShow(false);
       alert('База данных успешно создана!');
     } catch (error) {
       alert(error.message);
     }
   };
+
+  const handleSave = async () => {
+    try { 
+      if (id) {
+        const currentSqlCode = generateSQL();
+        const currentSqlInsert = generateDataInsertSQL(nodes, tableData);
+        const currentScv = jsonToCsv(result);
+
+        const response = await fetch(`http://localhost:8080/api/databases/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          Id: id,
+          Schema: currentSqlCode ,
+          SchemaInsert: currentSqlInsert,
+          Task: taskDescription,
+          Decision: currentScv,
+        })
+      });
+
+      if (!response.ok) throw new Error('Ошибка сохранения');
+      setSqlCode(currentSqlCode);
+      setsqlCodeInsert(currentSqlInsert);
+      setCsvDecision(currentScv);
+      setShow(false);
+      alert('База данных успешно сохранена!');
+      navigate('/profile')
+
+      } else {
+        setShow(true);
+      }
+    } catch (error) {
+      alert(error.message);
+    }
+  }
   
 
   return (
     <>
-      <Button variant="success" onClick={() => setShow(true)}>
+      <Button variant="success" onClick={handleSave}>
         Сохранить
       </Button>
 
@@ -63,7 +137,7 @@ export default function SaveDatabaseButton({ nodes, tableData, generateSQL, gene
           <Button variant="secondary" onClick={() => setShow(false)}>
             Отмена
           </Button>
-          <Button variant="primary" onClick={handleSave}>
+          <Button variant="primary" onClick={handleSaveNew}>
             Далее
           </Button>
         </Modal.Footer>

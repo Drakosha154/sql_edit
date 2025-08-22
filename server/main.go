@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/gin-contrib/cors"
-	"github.com/joho/godotenv"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -60,10 +60,15 @@ func main() {
 	authGroup := r.Group("/api")
 	authGroup.Use(middleware.AuthMiddleware())
 	{
+		//создание задания
 		authGroup.POST("/databases", routes.SaveDatabase)
 		authGroup.GET("/getdatabases", routes.GetUserDatabases)
 		authGroup.GET("/databases/:id", routes.GetDatabasesByID)
 		authGroup.DELETE("/databases/:id", routes.DelDatabasesByID)
+		authGroup.PATCH("/databases/:id", routes.UpdDatabasesByID)
+
+		//решение задания
+		authGroup.POST("/check-solution", routes.CheckSolutionWithSchema)
 	}
 
 	// Выведите все зарегистрированные маршруты

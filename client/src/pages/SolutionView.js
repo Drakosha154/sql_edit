@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Card, Table, Container, Row, Col, InputGroup } from 'react-bootstrap';
 
-const SolutionView = ({ nodes, edges, tableData }) => {
+const SolutionView = ({ nodes, edges, tableData, setResult, result, selectedColumns, setSelectedColumns }) => {
   const [selectedTable, setSelectedTable] = useState('');
-  const [selectedColumns, setSelectedColumns] = useState([]);
   const [conditions, setConditions] = useState([]);
-  const [result, setResult] = useState([]);
   const [joinTables, setJoinTables] = useState([]);
 
   // Получаем список таблиц
@@ -84,7 +82,6 @@ const SolutionView = ({ nodes, edges, tableData }) => {
                   value={selectedTable}
                   onChange={(e) => {
                     setSelectedTable(e.target.value);
-                    setSelectedColumns([]);
                     setConditions([]);
                   }}
                 >

@@ -22,7 +22,18 @@ type Database_lists struct {
 	Database_create_text string
 	Database_insert_text string
 	Database_decision    string
+	Database_task        string
 	CreatedAt            time.Time
+}
+
+type Task_list struct {
+	ID          uint `gorm:"primaryKey"`
+	UserID      uint      `gorm:"not null"`
+	TaskID      uint      `gorm:"not null"`
+	DecisionCSV string    
+	IsCorrect   bool
+	CreatedAt   time.Time
+    UpdatedAt   time.Time
 }
 
 func (u *User) HashPassword(password string) error {

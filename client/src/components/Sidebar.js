@@ -6,7 +6,9 @@ import { Tab, Nav, Row, Col } from 'react-bootstrap';
 
 const Sidebar = React.memo(({ 
   nodes, 
+  setNodes,
   edges,
+  setEdges,
   activeNodeId, 
   activeEdgeId,
   setActiveNodeId, 
@@ -22,8 +24,28 @@ const Sidebar = React.memo(({
   activeTab,
   setActiveTab,
   generateDataInsertSQL,
-  tableData
+  tableData,
+  setTableData,
+  taskDescription,
+  result,
+  setCsvDecision,
+  csvDecision
 }) => {
+
+  const deleteNode = useCallback((nodeId) => {
+  const nodeToDelete = nodes.find(node => node.id === nodeId);
+  if (!nodeToDelete) return;
+
+  setNodes(prevNodes => prevNodes.filter(node => node.id !== nodeId));
+  setEdges(prevEdges => prevEdges.filter(edge => 
+    edge.source !== nodeId && edge.target !== nodeId
+  ));
+  setTableData(prev => {
+    const newData = {...prev};
+    delete newData[nodeToDelete.data.label];
+    return newData;
+  });
+}, [nodes]);
 
   return (
     <aside className="bg-dark h-100" style={{ width: '380px'}}>
@@ -33,6 +55,10 @@ const Sidebar = React.memo(({
           tableData={tableData}
           generateSQL={generateSQL}
           generateDataInsertSQL={generateDataInsertSQL}
+          taskDescription={taskDescription}
+          result={result}
+          setCsvDecision={setCsvDecision}
+          csvDecision={csvDecision}
         />
         <button 
           variant="outline-primary" 
@@ -67,6 +93,7 @@ const Sidebar = React.memo(({
                 setActiveNodeId={setActiveNodeId} 
                 updateNodeAttributes={updateNodeAttributes}
                 updateEdgeAttributes={updateEdgeAttributes}
+                deleteNode={deleteNode}
               />
             </Tab.Pane>
             <Tab.Pane eventKey="relations" forceMount={activeTab !== "relations"}>

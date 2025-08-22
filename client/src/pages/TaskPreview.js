@@ -14,9 +14,8 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import "bootstrap-icons/font/bootstrap-icons.css";
 import DatabaseVisualPreview from '../components/DatabaseVisualPreview'
 
-const TaskPreview = ({ nodes, edges }) => {
+const TaskPreview = ({ nodes, edges, setNodes, onNodesChange, onEdgesChange, taskDescription, setTaskDescription }) => {
   // Состояния
-  const [taskDescription, setTaskDescription] = useState('');
   const [solutionCode, setSolutionCode] = useState('');
   const [showSchema, setShowSchema] = useState(false);
   const [activeTab, setActiveTab] = useState('editor');
@@ -54,13 +53,7 @@ const TaskPreview = ({ nodes, edges }) => {
                     >
                       <i className="bi bi-lightbulb"></i> Пример задачи
                     </Button>
-                    
-                    <Button 
-                      variant="primary"
-                      onClick={() => setActiveTab('preview')}
-                    >
-                      <i className="bi bi-eye"></i> Предпросмотр
-                    </Button>
+                
                   </div>
                 </Form.Group>
             </Card.Body>
@@ -85,7 +78,7 @@ const TaskPreview = ({ nodes, edges }) => {
                 
                 <h4>Схема базы данных</h4>
                 <div className="schema-preview mb-4 p-3 border rounded">
-                  <DatabaseVisualPreview nodes={nodes} edges={edges} />
+                  <DatabaseVisualPreview nodes={nodes} edges={edges} setNodes={setNodes}/>
                 </div>
                 
                 <h4>Редактор запросов</h4>

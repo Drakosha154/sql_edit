@@ -62,27 +62,47 @@ export default function Profile() {
         }
     };
 
+    const handleResolve = async (dbId) => {
+        navigate(`/Resolve/${dbId}`);
+    };
+
     return (
-        <div className="container mt-4">
-            <h2>Мои базы данных</h2>
-            <div className="btn border mt-2">
-                <NavLink to="/create" className="nav-link">Создать задание</NavLink>
-            </div>
-            <div className="list-group mt-3">
-                {databases.map(db => (
-                    <div key={db.ID} className="list-group-item border mt-2">
-                        <h5>{db.Name}</h5>
-                        <small>{db.CreatedAt}</small>
-                        <div className="mt-2">
-                            <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleEdit(db.ID)}>
-                                Редактировать
-                            </button>
-                            <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(db.ID)}>
-                                Удалить
-                            </button>
-                        </div>
+        <div className="container ">
+            <h2 className="d-flex justify-content-center m-3" >Мои базы данных</h2>
+            <div className="d-flex h-100 border" >
+                <div className=" w-50 border m-2" >
+                    <div className="d-flex justify-content-center m-2">
+                        <h4>Решённые</h4>
                     </div>
-                ))}
+
+                </div>
+                <div className="w-50 border m-2" >
+                    <div className="d-flex justify-content-center m-2">
+                        <h4>Созданные</h4>
+                    </div>
+                    <div className="btn border ms-3">
+                        <NavLink to="/create" className="nav-link">Создать задание</NavLink>
+                    </div>
+                    <div className="list-group m-2">
+                        {databases.map(db => (
+                        <div key={db.ID} className="list-group-item border m-2">
+                            <h5>{db.Name}</h5>
+                            <small>{db.CreatedAt}</small>
+                            <div className="mt-2">
+                                <button className="btn btn-sm btn-outline-success me-2" onClick={() => handleResolve(db.ID)}>
+                                    Решить
+                                </button>
+                                <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleEdit(db.ID)}>
+                                    Редактировать
+                                </button>
+                                <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(db.ID)}>
+                                    Удалить
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                </div>
             </div>
         </div>
     );

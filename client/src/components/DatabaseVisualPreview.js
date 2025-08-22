@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import ReactFlow, {
   Controls,
   Background,
@@ -6,18 +6,28 @@ import ReactFlow, {
   getBezierPath,
   BaseEdge,
   Panel,
-  EdgeLabelRenderer
+  EdgeLabelRenderer,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Button, Modal } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import "bootstrap-icons/font/bootstrap-icons.css";
 import EntityNode from '../components/EntityNode';
+import { useDagreLayout } from '../utils/useDagreLayout';
 
 const nodeTypes = { entity: EntityNode };
 
-const DatabaseVisualPreview = ({ nodes, edges }) => {
+const DatabaseVisualPreview = ({ nodes, edges, setNodes, onNodesChange, onEdgesChange }) => {
   const [showPreview, setShowPreview] = useState(false);
+  const applyLayout = useDagreLayout();
+
+  //компановка
+  const handleAutoLayout = useCallback(() => {
+    setShowPreview(true)
+    const layoutedNodes = applyLayout(nodes, edges, 'LR');
+    setNodes(layoutedNodes);
+  }, [nodes, edges, applyLayout]);
+
 
   // Кастомный рендер для связей
   const CustomEdge = ({
@@ -92,7 +102,7 @@ const DatabaseVisualPreview = ({ nodes, edges }) => {
     <>
       <Button 
         variant="outline-primary" 
-        onClick={() => setShowPreview(true)}
+        onClick={handleAutoLayout}
         className=""
       >
         <i className="bi bi-diagram-3 me-2"></i>
@@ -113,18 +123,19 @@ const DatabaseVisualPreview = ({ nodes, edges }) => {
             nodes={nodes}
             edges={formattedEdges}
             nodeTypes={nodeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
             edgeTypes={edgeTypes}
-            fitView
-            nodesDraggable={false}
             nodesConnectable={false}
-            zoomOnScroll={false}
+            fitView
           >
             <Background variant="dots" color="#4a5568" gap={16} size={1} />
             <Controls position="top-right" style={{ 
                 backgroundColor: '#2d3748', 
                 borderRadius: '4px',
                 boxShadow: '0 2px 10px rgba(0,0,0,0.5)' 
-            }}/>
+            }}>
+            </Controls>
             <MiniMap position="bottom-right" style={{ backgroundColor: '#2d3748' }} />
             <Background />
             

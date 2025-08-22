@@ -34,6 +34,7 @@ import TaskPreview from './TaskPreview';
 import SolutionView from './SolutionView';
 
 import { parseSQL } from '../utils/sqlParser';
+import { csvToJson } from '../utils/csvToJson';
 
 
 
@@ -71,6 +72,10 @@ export default function ERDEditor() {
   const [sqlCode, setSqlCode] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
   const [importError, setImportError] = useState(null);
+  const [taskDescription, setTaskDescription] = useState('');
+  const [result, setResult] = useState([]);
+  const [csvDecision, setCsvDecision] = useState('');
+  const [selectedColumns, setSelectedColumns] = useState([]);
 
   const { id } = useParams();
     
@@ -91,9 +96,19 @@ export default function ERDEditor() {
               }
             
             const data = await response.json();
-              console.log(data);
               handleImportSQL(data.schema);
+              //console.log(data.data);
               handleImportSQLInsert(data.data);
+              setTaskDescription(data.task);
+
+              const resultData = csvToJson(data.decision);
+              setResult(resultData)
+
+              if (resultData && resultData.length > 0) {
+                const columns = Object.keys(resultData[0]);
+                setSelectedColumns(columns);
+              }
+
         } catch (error) {
               console.error("Ошибка загрузки:", error);
               alert("Ошибка загрузки: " + error.message);
@@ -331,6 +346,7 @@ const getSqlType = (type) => {
     'string': 'TEXT',
     'integer': 'INTEGER',
     'boolean': 'BOOLEAN',
+    'numeric': 'NUMERIC',
     'bigint': 'BIGINT',
     'timestamp': 'TIMESTAMP'
   };
@@ -375,7 +391,20 @@ const generateDataInsertSQL = (nodes, tableData, options = {}) => {
           // Обработка разных типов данных
           if (value === null || value === undefined) return 'NULL';
           
-          return `"${value}"`
+          // Определяем тип данных атрибута
+          const attrType = col.type?.toLowerCase();
+          
+          // Для текстовых типов добавляем кавычки и экранируем существующие кавычки
+          if (isTextType(attrType) || typeof value === 'string') {
+            return `'${String(value).replace(/'/g, "''")}'`;
+          }
+          
+          // Для булевых значений преобразуем в TRUE/FALSE
+          if (isBooleanType(attrType) || typeof value === 'boolean') {
+            return value ? 'TRUE' : 'FALSE';
+          }
+          
+          return `${value}`
         }).join(', ');
 
         return `  (${values})`;
@@ -387,10 +416,27 @@ const generateDataInsertSQL = (nodes, tableData, options = {}) => {
 
   sqlCodeInsert += 'COMMIT;\n';
 
-  console.log(sqlCodeInsert)
-
   return sqlCodeInsert;
 }
+
+// Вспомогательные функции для определения типов
+const isTextType = (type) => {
+  if (!type) return false;
+  const textTypes = ['varchar', 'text', 'char', 'string', 'character', 'character varying'];
+  return textTypes.includes(type.toLowerCase());
+};
+
+const isBooleanType = (type) => {
+  if (!type) return false;
+  const booleanTypes = ['boolean', 'bool', 'bit'];
+  return booleanTypes.includes(type.toLowerCase());
+};
+
+const isNumericType = (type) => {
+  if (!type) return false;
+  const numericTypes = ['integer', 'int', 'bigint', 'smallint', 'numeric', 'decimal', 'real', 'double', 'float'];
+  return numericTypes.includes(type.toLowerCase());
+};
 
 const showGeneratedSQL = () => {
   setSqlCodeInsert(generateSQL());
@@ -538,8 +584,6 @@ const handleImportSQL = (sql = sqlCode) => {
         }
       });
     }
-
-    console.log(result);
     
     return result;
   } catch (error) {
@@ -664,7 +708,9 @@ const flowContent = useMemo(() => (
             <div className="sidebar-wrapper">
               <Sidebar 
                 nodes={nodes}
+                setNodes={setNodes}
                 edges={edges}
+                setEdges={setEdges}
                 activeNodeId={activeNodeId}
                 activeEdgeId={activeEdgeId}
                 setActiveNodeId={setActiveNodeId}
@@ -682,6 +728,13 @@ const flowContent = useMemo(() => (
                 activeTab={sidebarActiveTab}
                 setActiveTab={setSidebarActiveTab}
                 tableData={tableData}
+                setTableData={setTableData}
+                taskDescription={taskDescription}
+                result={result}
+                setCsvDecision={setCsvDecision}
+                csvDecision={csvDecision}
+                setSelectedColumns={setSelectedColumns}
+                selectedColumns={selectedColumns}
               />
               </div>
               <div className="d-flex reactflow-wrapper position-relative flex-grow-1 h-100">
@@ -703,6 +756,10 @@ const flowContent = useMemo(() => (
             nodes={nodes}
             edges={edges}
             tableData={tableData}
+            setResult={setResult}
+            result={result}
+            setSelectedColumns={setSelectedColumns}
+            selectedColumns={selectedColumns}
           />
         </Tab.Pane>
 
@@ -710,6 +767,11 @@ const flowContent = useMemo(() => (
           <TaskPreview 
             nodes={nodes} 
             edges={edges}
+            setNodes={setNodes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            setTaskDescription={setTaskDescription}
+            taskDescription={taskDescription}
           />
         </Tab.Pane>
       </Tab.Content> 

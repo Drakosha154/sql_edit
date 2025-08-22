@@ -38,6 +38,7 @@ const AttributeItem = React.memo(({ attribute, onUpdate, onRemove, nodeId, updat
       >
         <option value="string">TEXT</option>
         <option value="integer">INTEGER</option>
+        <option value="numeric">NUMERIC</option>
         <option value="boolean">BOOLEAN</option>
         <option value="bigint">BIGINT</option>
         <option value="timestamp">TIMESTAMP</option>

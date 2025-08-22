@@ -13,7 +13,7 @@ CREATE TABLE PC (
     ram INT NOT NULL,
     hd INT NOT NULL,
     cd TEXT NOT NULL,
-    price INT NOT NULL
+    price NUMERIC NOT NULL
 );
 
 -- Создаем таблицу Laptop без внешнего ключа
@@ -23,7 +23,7 @@ CREATE TABLE Laptop (
     speed INT NOT NULL,
     ram INT NOT NULL,
     hd INT NOT NULL,
-    price INT NOT NULL,
+    price NUMERIC NOT NULL,
     screen INT NOT NULL
 );
 
@@ -33,7 +33,7 @@ CREATE TABLE Printer (
     model TEXT NOT NULL,
     color TEXT CHECK (color IN ('y', 'n')),
     type TEXT CHECK (type IN ('Laser', 'Jet', 'Matrix')),
-    price INT NOT NULL
+    price NUMERIC NOT NULL
 );
 
 -- Добавляем внешние ключи через ALTER TABLE

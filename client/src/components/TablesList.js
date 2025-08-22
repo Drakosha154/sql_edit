@@ -8,6 +8,7 @@ const TablesList = ({
     setActiveNodeId,
     updateNodeAttributes,
     updateEdgeAttributes,
+    deleteNode
   }) => {
 
   const [editingNodeId, setEditingNodeId] = useState(null);
@@ -65,6 +66,15 @@ const TablesList = ({
     
     updateNodeAttributes(activeNode.id, updatedAttributes);
   }, [activeNode, updateNodeAttributes]);
+
+  const deleteTable = useCallback(() => {
+    if (!activeNodeId) return;
+    
+    if (window.confirm(`Вы уверены, что хотите удалить таблицу "${activeNode?.data.label}"?`)) {
+      deleteNode(activeNodeId);
+      setActiveNodeId(null); // Сбрасываем активную таблицу после удаления
+    }
+  }, [activeNodeId, activeNode, deleteNode, setActiveNodeId]);
     
     return (
       <section className="d-flex flex-column">
@@ -126,12 +136,20 @@ const TablesList = ({
                           updateEdgeAttributes={updateEdgeAttributes}
                         />
                       ))}
-                      <button 
-                        onClick={addAttribute} 
-                        className="btn border"
-                      >
-                        Добавить поле
-                      </button>
+                      <div className="d-flex justify-content-between">
+                        <button 
+                          onClick={addAttribute} 
+                          className="btn border" 
+                        >
+                          Добавить поле
+                        </button>
+                        <button 
+                          onClick={deleteTable} 
+                          className="btn btn-outline-danger" 
+                        >
+                          Удалить таблицу
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>
