@@ -190,6 +190,67 @@ func UpdDatabasesByID(c *gin.Context) {
 	})
 }
 
+func GetSolutionTask(c *gin.Context) {
+
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid database ID"})
+		return
+	}
+
+	userID := c.MustGet("userID").(uint)
+
+	// Получаем задание из базы
+	var task models.Task_list
+	if err := database.DB.Where("user_id = ? AND task_id = ? AND is_correct = ?", userID, id, true).First(&task).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Задание не найдено"})
+		return
+	}
+
+	// Сохраняем результат ПЕРЕД отправкой ответа клиенту
+    db := models.Task_list{
+        UserID:      userID,
+        TaskID:      id,
+        DecisionSQL: task.DecisionSQL,
+        IsCorrect:   task.IsCorrect, // Используем реальный результат проверки
+    }
+
+	c.JSON(http.StatusOK, db)
+}
+
+func GetSolutionTaskProfile(c *gin.Context) {
+
+	userID := c.MustGet("userID").(uint)
+
+	// Получаем задание из базы
+	var task []models.Task_list
+	if err := database.DB.Where("user_id = ?", userID).First(&task).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Задание не найдено"})
+		return
+	}
+
+	type TaskProfile struct {
+		ID        uint
+		TaskID    int
+		IsCorrect bool
+		UpdatedAt time.Time
+	}
+
+	var result []TaskProfile
+	for _, db := range task {
+		result = append(result, TaskProfile{
+			ID:        db.ID,
+			TaskID:    db.TaskID,
+			IsCorrect: db.IsCorrect,
+			UpdatedAt: db.UpdatedAt,
+		})
+	}
+
+	c.JSON(http.StatusOK, result)
+
+}
+
 // SolutionResult представляет результат проверки
 type SolutionResult struct {
 	Success        bool                     `json:"success"`
@@ -204,8 +265,8 @@ func CheckSolutionWithSchema(c *gin.Context) {
 	startTime := time.Now()
 
 	var request struct {
-		SolutionSQL string `json:"solution_sql" binding:"required"`
-		TaskID      int    `json:"task_id" binding:"required"`
+		SolutionSQL string `json:"solution_sql"`
+		TaskID      int    `json:"task_id"`
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -245,6 +306,46 @@ func CheckSolutionWithSchema(c *gin.Context) {
 	}
 
 	result.ExecutionTime = time.Since(startTime)
+
+	// Сохраняем результат ПЕРЕД отправкой ответа клиенту
+    db := models.Task_list{
+        UserID:      userID,
+        TaskID:      request.TaskID,
+        DecisionSQL: request.SolutionSQL,
+        IsCorrect:   result.Success, // Используем реальный результат проверки
+    }
+
+	var existingTask models.Task_list
+	erro := database.DB.Where("user_id = ? AND task_id = ?", userID, request.TaskID).First(&existingTask).Error
+
+	if erro != nil {
+    // Запись не существует - создаем новую
+    	if err := database.DB.Create(&db).Error; err != nil {
+        	log.Printf("Ошибка создания записи задачи: %v", err)
+        	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save task"})
+        	return
+    	}
+	} else {
+    	// Запись существует - проверяем условия обновления
+    	shouldUpdate := false
+    
+    	if existingTask.IsCorrect {
+    	    // Если уже есть успешное решение - обновляем только если новое тоже успешное
+    	    if result.Success {
+    	        shouldUpdate = true
+    	    }
+    	} else {
+    	    // Если предыдущее решение было неуспешным - обновляем всегда
+    	    shouldUpdate = true
+    	}
+    
+    	if shouldUpdate {
+    	    if err := database.DB.Model(&existingTask).Updates(db).Error; err != nil {
+	    		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update database"})
+	    		return
+			}
+    	}
+	}
 
 	c.JSON(http.StatusOK, result)
 }

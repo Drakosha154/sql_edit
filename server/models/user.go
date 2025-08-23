@@ -27,12 +27,11 @@ type Database_lists struct {
 }
 
 type Task_list struct {
-	ID          uint `gorm:"primaryKey"`
+	ID          uint      `gorm:"primaryKey"`
 	UserID      uint      `gorm:"not null"`
-	TaskID      uint      `gorm:"not null"`
-	DecisionCSV string    
+	TaskID      int       `gorm:"not null"`
+	DecisionSQL string    
 	IsCorrect   bool
-	CreatedAt   time.Time
     UpdatedAt   time.Time
 }
 

@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 
 export default function Profile() {
     const [databases, setDatabases] = useState([]);
+    const [tasksData, setTasksData] = useState([])
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -23,6 +24,25 @@ export default function Profile() {
             
             const data = await response.json();
             setDatabases(data.databases);
+        } catch (error) {
+            console.error("Ошибка загрузки:", error);
+            alert("Ошибка загрузки: " + error.message);
+        }
+    };
+    fetchUserDatabases();
+}, []);
+
+useEffect(() => {
+    const fetchUserDatabases = async () => {
+        try {
+            const response = await fetch('http://localhost:8080/api/get-solution', {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            const data = await response.json();
+            console.log(data)
+            setTasksData(data)
         } catch (error) {
             console.error("Ошибка загрузки:", error);
             alert("Ошибка загрузки: " + error.message);
@@ -74,7 +94,24 @@ export default function Profile() {
                     <div className="d-flex justify-content-center m-2">
                         <h4>Решённые</h4>
                     </div>
-
+                    <div className="btn border ms-3">
+                        <NavLink to="/create" className="nav-link">Создать задание</NavLink>
+                    </div>
+                    {tasksData && (
+                    <div className="list-group m-2">
+                        {tasksData.map(db => (
+                        <div key={db.ID} className="list-group-item border m-2">
+                            <h5>Номер задания {db.TaskID}</h5>
+                            <small>{db.UpdatedAt}</small>
+                            <div className="mt-2">
+                                <button className="btn btn-sm btn-outline-success me-2" onClick={() => handleResolve(db.TaskID)}>
+                                    Решить
+                                </button>
+                            </div>
+                        </div>
+                        ))}
+                    </div>)
+                    }
                 </div>
                 <div className="w-50 border m-2" >
                     <div className="d-flex justify-content-center m-2">

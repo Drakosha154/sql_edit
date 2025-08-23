@@ -69,6 +69,8 @@ func main() {
 
 		//решение задания
 		authGroup.POST("/check-solution", routes.CheckSolutionWithSchema)
+		authGroup.GET("/get-solution", routes.GetSolutionTaskProfile)
+		authGroup.GET("/get-solution/:id", routes.GetSolutionTask)
 	}
 
 	// Выведите все зарегистрированные маршруты
