@@ -163,8 +163,6 @@ export default function Task_manage({
         }
       });
     }
-
-    console.log(result);
     
     return result;
   } catch (error) {

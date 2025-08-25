@@ -97,7 +97,6 @@ export default function ERDEditor() {
             
             const data = await response.json();
               handleImportSQL(data.schema);
-              //console.log(data.data);
               handleImportSQLInsert(data.data);
               setTaskDescription(data.task);
 

@@ -7,6 +7,7 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Resolve from './pages/Resolve';
 import Main from './pages/Main';
+import UserProfile from './pages/UserProfile'
 
 function App() {
   const [isAuth, setAuth] = useState(false);
@@ -29,6 +30,7 @@ function App() {
           <Route path="/login" element={<Login setAuth={setAuth} />} />
           <Route path="/register" element={<Register setAuth={setAuth} />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/:id" element={<UserProfile />} />
           <Route path="/resolve/:id" element={<Resolve />} />
         </Routes>
     </div>

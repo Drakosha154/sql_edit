@@ -13,6 +13,10 @@ type User struct {
 	Password  string `gorm:"not null"`
 	CreatedAt time.Time
 	Role      string `gorm:"not null;default:'user'"`
+
+	// Relations
+    Databases []Database_lists `gorm:"foreignKey:ID_creator"`
+    Solutions []Task_list      `gorm:"foreignKey:UserID"`
 }
 
 type Database_lists struct {

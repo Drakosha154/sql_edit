@@ -55,6 +55,8 @@ func main() {
 	// Публичные маршруты (без аутентификации)
 	r.POST("/api/register", routes.Register)
 	r.POST("/api/login", routes.Login)
+	r.GET("/api/users/search", routes.SearchUsers)
+	r.GET("/api/users/:id", routes.GetUserProfileMain)
 
 	// Приватные маршруты (требуют JWT)
 	authGroup := r.Group("/api")
@@ -71,6 +73,12 @@ func main() {
 		authGroup.POST("/check-solution", routes.CheckSolutionWithSchema)
 		authGroup.GET("/get-solution", routes.GetSolutionTaskProfile)
 		authGroup.GET("/get-solution/:id", routes.GetSolutionTask)
+
+		// Профиль пользователя
+		authGroup.GET("/profile/me", routes.GetMyProfile)
+		authGroup.GET("/users/:id/databases", routes.GetUserDatabasesProfile)
+		authGroup.GET("/users/:id/solutions", routes.GetUserSolutions)
+		authGroup.GET("/tasks/:id/solutions", routes.GetTaskSolutions)
 	}
 
 	// Выведите все зарегистрированные маршруты
