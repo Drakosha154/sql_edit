@@ -8,6 +8,8 @@ import Profile from './pages/Profile';
 import Resolve from './pages/Resolve';
 import Main from './pages/Main';
 import UserProfile from './pages/UserProfile'
+import AdminPanel from './pages/AdminPanel'
+import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   const [isAuth, setAuth] = useState(false);
@@ -32,6 +34,11 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/:id" element={<UserProfile />} />
           <Route path="/resolve/:id" element={<Resolve />} />
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <AdminPanel />
+            </ProtectedRoute>
+          } />
         </Routes>
     </div>
   );

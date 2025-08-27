@@ -21,6 +21,8 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import DatabaseVisualPreview from '../components/DatabaseVisualPreview';
 import { csvToJson } from '../utils/csvToJson';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL
+
 export default function Resolve() {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
@@ -34,6 +36,7 @@ export default function Resolve() {
   const [result, setResult] = useState([]);
   const [resultSolution, setResultSolution] = useState(null);
   const [columnsResult, setColumnsResult] = useState([]);
+  const [userColumnsResult, setUserColumnsResult] = useState([]);
   const [checkResult, setCheckResult] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,7 +47,7 @@ export default function Resolve() {
     const fetchUserDatabases = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`http://localhost:8080/api/databases/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/databases/${id}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -84,7 +87,7 @@ export default function Resolve() {
   useEffect(() => {
     const fetchUserDatabases = async () => {
       try {
-      const response = await fetch(`http://localhost:8080/api/get-solution/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/get-solution/${id}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -113,7 +116,7 @@ export default function Resolve() {
     setResultSolution(null);
 
     try {
-      const response = await fetch('http://localhost:8080/api/check-solution', {
+      const response = await fetch(`${API_BASE_URL}/api/check-solution`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -126,12 +129,17 @@ export default function Resolve() {
       });
 
       const data = await response.json();
+
+      console.log(data)
       
       if (!response.ok) {
         throw new Error(data.error || data.details || 'Ошибка проверки');
       }
 
       setResultSolution(data);
+
+      const userColumns = Object.keys(data.user_result[0]);
+      setUserColumnsResult(userColumns);
       
       const columns = Object.keys(data.expected_result[0]);
       setColumnsResult(columns);
@@ -466,7 +474,7 @@ export default function Resolve() {
                         <Table striped bordered hover className="mb-0">
                           <thead className="table-dark">
                             <tr>
-                              {columnsResult.map((column, index) => (
+                              {userColumnsResult.map((column, index) => (
                                 <th key={index}>
                                   {column.toUpperCase()}
                                 </th>
@@ -476,7 +484,7 @@ export default function Resolve() {
                           <tbody>
                             {resultSolution.user_result.map((row, rowIndex) => (
                               <tr key={rowIndex}>
-                                {columnsResult.map((column, colIndex) => (
+                                {userColumnsResult.map((column, colIndex) => (
                                   <td key={colIndex}>
                                     {row[column] !== null && row[column] !== undefined 
                                       ? row[column].toString() 

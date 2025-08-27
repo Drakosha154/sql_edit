@@ -7,12 +7,12 @@ import (
 )
 
 type User struct {
-	ID        uint   `gorm:"primaryKey"`
-	Username  string `gorm:"unique;not null"`
-	Email     string `gorm:"unique;not null"`
-	Password  string `gorm:"not null"`
+	ID        uint   	`gorm:"primaryKey"`
+	Username  string 	`gorm:"unique;not null"`
+	Email     string 	`gorm:"unique;not null"`
+	Password  string 	`gorm:"not null"`
 	CreatedAt time.Time
-	Role      string `gorm:"not null;default:'user'"`
+	IsAdmin   bool    	`gorm:"not null;default:false"`
 
 	// Relations
     Databases []Database_lists `gorm:"foreignKey:ID_creator"`
@@ -28,6 +28,9 @@ type Database_lists struct {
 	Database_decision    string
 	Database_task        string
 	CreatedAt            time.Time
+
+	// Связь с создателем
+	Creator User `gorm:"foreignKey:ID_creator"`
 }
 
 type Task_list struct {
@@ -37,6 +40,10 @@ type Task_list struct {
 	DecisionSQL string    
 	IsCorrect   bool
     UpdatedAt   time.Time
+
+	// Связи
+	User User           `gorm:"foreignKey:UserID"`
+	Task Database_lists `gorm:"foreignKey:TaskID"`
 }
 
 func (u *User) HashPassword(password string) error {

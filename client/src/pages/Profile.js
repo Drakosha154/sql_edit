@@ -15,6 +15,8 @@ import {
   Modal
 } from 'react-bootstrap';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL
+
 export default function Profile() {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
@@ -36,7 +38,7 @@ export default function Profile() {
             setLoading(true);
             const token = localStorage.getItem('token');
             
-            const response = await fetch('http://localhost:8080/api/profile/me', {
+            const response = await fetch(`${API_BASE_URL}/api/profile/me`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -62,7 +64,7 @@ export default function Profile() {
     const fetchMyDatabases = async (user) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:8080/api/users/${user.id}/databases`, {
+            const response = await fetch(`${API_BASE_URL}/api/users/${user.id}/databases`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -77,7 +79,7 @@ export default function Profile() {
     const fetchMySolutions = async (user) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:8080/api/users/${user.id}/solutions`, {
+            const response = await fetch(`${API_BASE_URL}/api/users/${user.id}/solutions`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -92,7 +94,7 @@ export default function Profile() {
     const fetchTaskSolutions = async (taskId) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:8080/api/tasks/${taskId}/solutions`, {
+            const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}/solutions`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -114,7 +116,7 @@ export default function Profile() {
                 return;
             }
 
-            const response = await fetch(`http://localhost:8080/api/databases/${dbId}`, {
+            const response = await fetch(`${API_BASE_URL}/api/databases/${dbId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`

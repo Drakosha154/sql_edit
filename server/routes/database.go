@@ -85,8 +85,6 @@ func GetUserDatabases(c *gin.Context) {
 
 func GetDatabasesByID(c *gin.Context) {
 
-	userID := c.MustGet("userID").(uint) // Получаем ID пользователя из middleware
-
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
@@ -95,7 +93,7 @@ func GetDatabasesByID(c *gin.Context) {
 	}
 
 	var db models.Database_lists
-	if err := database.DB.Where("id = ? AND id_creator = ?", id, userID).First(&db).Error; err != nil {
+	if err := database.DB.Where("id = ?", id).First(&db).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Database not found"})
 		return
 	}
@@ -630,17 +628,12 @@ func valuesEqual(a, b interface{}) bool {
 // validateSQL улучшенная проверка SQL
 func validateSQL(sql string) error {
 	blacklist := []string{
-		"DROP DATABASE",
-		"CREATE DATABASE",
-		"ALTER DATABASE",
-		"\\c ",
-		"pg_",
-		"\\dt",
-		"\\dn",
-		"\\ds",
-		"--",
-		"/*",
-		"*/",
+		";", "--", "/*", "*/", 
+        "DROP", "CREATE", "ALTER", "TRUNCATE", 
+        "DELETE", "INSERT", "UPDATE",
+        "EXEC", "EXECUTE", "xp_", "sp_",
+        "UNION", "SELECT.*FROM", "INFORMATION_SCHEMA",
+        "pg_", "\\c", "\\dt", "\\dn",
 	}
 
 	// Проверяем на наличие опасных операций со схемами

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Form, Container, Alert } from 'react-bootstrap';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL
+
 const Register = ({ setAuth }) => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -20,7 +22,7 @@ const Register = ({ setAuth }) => {
     }
 
     try {
-      const response = await fetch('http://localhost:8080/api/register', {
+      const response = await fetch(`${API_BASE_URL}/api/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password }),
@@ -30,7 +32,7 @@ const Register = ({ setAuth }) => {
       
       if (response.ok) {
         // После успешной регистрации автоматически входим
-        const loginResponse = await fetch('http://localhost:8080/api/login', {
+        const loginResponse = await fetch(`${API_BASE_URL}/api/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),

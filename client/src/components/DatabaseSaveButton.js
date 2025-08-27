@@ -3,6 +3,8 @@ import { Button, Modal, Form } from 'react-bootstrap';
 import { useNavigate } from "react-router-dom";
 import { useParams } from 'react-router-dom';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL
+
 function jsonToCsv(data) {
   if (!data || data.length === 0) return '';
   
@@ -47,7 +49,7 @@ export default function SaveDatabaseButton({ nodes, tableData, generateSQL, gene
       const currentSqlInsert = generateDataInsertSQL(nodes, tableData);
       const currentScv = jsonToCsv(result);
 
-      const response = await fetch('http://localhost:8080/api/databases', {
+      const response = await fetch(`${API_BASE_URL}/api/databases`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -80,7 +82,7 @@ export default function SaveDatabaseButton({ nodes, tableData, generateSQL, gene
         const currentSqlInsert = generateDataInsertSQL(nodes, tableData);
         const currentScv = jsonToCsv(result);
 
-        const response = await fetch(`http://localhost:8080/api/databases/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/databases/${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

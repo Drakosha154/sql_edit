@@ -79,6 +79,17 @@ func main() {
 		authGroup.GET("/users/:id/databases", routes.GetUserDatabasesProfile)
 		authGroup.GET("/users/:id/solutions", routes.GetUserSolutions)
 		authGroup.GET("/tasks/:id/solutions", routes.GetTaskSolutions)
+
+		adminGroup := authGroup.Group("/admin")
+    	adminGroup.Use(routes.AdminMiddleware())
+    	{
+        	adminGroup.GET("/stats", routes.GetAdminStats)
+        	adminGroup.GET("/users", routes.GetAllUsers)
+        	adminGroup.PATCH("/users/:id", routes.UpdateUser)
+        	adminGroup.DELETE("/users/:id", routes.DeleteUser)
+        	adminGroup.GET("/tasks", routes.GetAllTasks)
+        	adminGroup.DELETE("/tasks/:id", routes.DeleteTask)
+    	}
 	}
 
 	// Выведите все зарегистрированные маршруты

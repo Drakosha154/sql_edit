@@ -14,6 +14,8 @@ import {
   Button 
 } from 'react-bootstrap';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL
+
 export default function UserProfile() {
     const { id } = useParams();
     const [user, setUser] = useState(null);
@@ -36,7 +38,7 @@ export default function UserProfile() {
             setLoading(true);
             const token = localStorage.getItem('token');
             
-            const response = await fetch(`http://localhost:8080/api/users/${id}`, {
+            const response = await fetch(`${API_BASE_URL}/api/users/${id}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -45,7 +47,7 @@ export default function UserProfile() {
             if (!response.ok) {
                 if (response.status === 401) {
                     // Если не авторизован, запрашиваем без токена
-                    const publicResponse = await fetch(`http://localhost:8080/api/users/${id}`);
+                    const publicResponse = await fetch(`${API_BASE_URL}/api/users/${id}`);
                     if (!publicResponse.ok) throw new Error('User not found');
                     
                     const publicData = await publicResponse.json();
@@ -69,7 +71,7 @@ export default function UserProfile() {
     const fetchUserDatabases = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:8080/api/users/${id}/databases`, {
+            const response = await fetch(`${API_BASE_URL}/api/users/${id}/databases`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -84,7 +86,7 @@ export default function UserProfile() {
     const fetchUserSolutions = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:8080/api/users/${id}/solutions`, {
+            const response = await fetch(`${API_BASE_URL}/api/users/${id}/solutions`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }

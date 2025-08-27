@@ -60,6 +60,8 @@ const createEntityNode = (entityName, attributes, position) => ({
   }
 });
 
+const API_BASE_URL = process.env.REACT_APP_API_URL
+
 export default function ERDEditor() {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
@@ -82,7 +84,7 @@ export default function ERDEditor() {
   useEffect(() => {
     const fetchUserDatabases = async () => {
             try {
-              const response = await fetch(`http://localhost:8080/api/databases/${id}`, {
+              const response = await fetch(`${API_BASE_URL}/api/databases/${id}`, {
                 headers: {
                   'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }

@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { Container, Form, Row, Col, Card, ListGroup, Spinner } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL
+
+console.log(API_BASE_URL)
+
 export default function SearchUsers() {
     const [searchQuery, setSearchQuery] = useState('');
     const [users, setUsers] = useState([]);
@@ -15,7 +19,7 @@ export default function SearchUsers() {
 
         setLoading(true);
         try {
-            const response = await fetch(`http://localhost:8080/api/users/search?q=${encodeURIComponent(query)}`);
+            const response = await fetch(`${API_BASE_URL}/api/users/search?q=${encodeURIComponent(query)}`);
             const data = await response.json();
             setUsers(data.users || []);
         } catch (error) {
