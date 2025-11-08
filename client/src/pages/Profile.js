@@ -23,6 +23,7 @@ export default function Profile() {
     const [stats, setStats] = useState(null);
     const [databases, setDatabases] = useState([]);
     const [solutions, setSolutions] = useState([]);
+    const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showStatsModal, setShowStatsModal] = useState(false);
@@ -50,6 +51,7 @@ export default function Profile() {
             setUser(data.user);
             fetchMyDatabases(data.user);
             fetchMySolutions(data.user);
+            fetchMyTask(data.user);
             setStats(data.stats);
             
             // Сохраняем пользователя в localStorage для навбара
@@ -73,6 +75,22 @@ export default function Profile() {
             setDatabases(data.databases);
         } catch (err) {
             console.error('Failed to fetch databases:', err);
+        }
+    };
+
+    const fetchMyTask = async (user) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE_URL}/api/users/${user.id}/task`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const data = await response.json();
+            setTasks(data.tasks);
+
+        } catch (err) {
+            console.error('Failed to fetch task', err);
         }
     };
 
@@ -136,8 +154,12 @@ export default function Profile() {
         }
     };
 
+    const handleDatabaseEdit = (dbId) => {
+        navigate(`/create_database/${dbId}`);
+    };
+
     const handleTaskEdit = (dbId) => {
-        navigate(`/create/${dbId}`);
+        navigate(`/create_task/${dbId}`);
     };
 
     const handleResolve = async (dbId) => {
@@ -207,29 +229,23 @@ export default function Profile() {
                         </Card.Body>
                     </Card>
 
-                    {/* Остальной код такой же как в UserProfile.jsx */}
                     <Tabs defaultActiveKey="databases" className="mb-3">
                         <Tab eventKey="databases" title="Базы данных">
                             <Card>
                                 <Card.Body>
                                     <div className="btn border ms-3">
-                                        <NavLink to="/create" className="nav-link">Создать задание</NavLink>
+                                        <NavLink to="/create_database" className="nav-link">Создать базу данных</NavLink>
                                     </div>
+                                    {console.log(databases)}
                                     {databases.length > 0 ? (
                                         <div className="list-group m-2">
                                             {databases.map(db => (
                                             <div key={db.ID} className="list-group-item border m-2">
-                                                <h5>Номер задания {db.ID}</h5>
+                                                <h5>{db.Database_name}</h5>
                                                 <small>{new Date(db.CreatedAt).toLocaleDateString()}</small>
                                                 <div className="mt-2">
-                                                    <button className="btn btn-sm btn-outline-success me-2" onClick={() => handleResolve(db.ID)}>
-                                                        Решить
-                                                    </button>
-                                                    <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleTaskEdit(db.ID)}>
+                                                    <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleDatabaseEdit(db.ID)}>
                                                         Редактировать
-                                                    </button>
-                                                    <button className="btn btn-sm btn-outline-info me-2" onClick={() => fetchTaskSolutions(db.ID)}>
-                                                        Статистика решений
                                                     </button>
                                                     <button className="btn btn-sm btn-outline-danger me-2" onClick={() => handleDelete(db.ID)}>
                                                         Удалить
@@ -241,6 +257,44 @@ export default function Profile() {
                                     ) : (
                                         <div className="text-center text-muted py-3">
                                             Нет созданных баз данных
+                                        </div>
+                                    )}
+                                </Card.Body>
+                            </Card>
+                        </Tab>
+                        
+                        <Tab eventKey="tasks" title="Мои задания">
+                            <Card>
+                                <Card.Body>
+                                    <div className="btn border ms-3">
+                                        <NavLink to="/create_task" className="nav-link">Создать задание</NavLink>
+                                    </div>
+                                    {tasks.length > 0 ? (
+                                        <div className="list-group m-2">
+                                            {tasks.map(task => (
+                                            <div key={task.ID} className="list-group-item border m-2">
+                                                <h5>{task.Task_name}</h5>
+                                                <small>{new Date(task.CreatedAt).toLocaleDateString()}</small>
+                                                <div className="mt-2">
+                                                    <button className="btn btn-sm btn-outline-success me-2" onClick={() => handleResolve(task.ID)}>
+                                                        Решить
+                                                    </button>
+                                                    <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleTaskEdit(task.ID)}>
+                                                        Редактировать
+                                                    </button>
+                                                    <button className="btn btn-sm btn-outline-info me-2" onClick={() => fetchTaskSolutions(task.ID)}>
+                                                        Статистика решений
+                                                    </button>
+                                                    <button className="btn btn-sm btn-outline-danger me-2" onClick={() => handleDelete(task.ID)}>
+                                                        Удалить
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center text-muted py-3">
+                                            Нет созданных заданий
                                         </div>
                                     )}
                                 </Card.Body>

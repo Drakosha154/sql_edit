@@ -93,7 +93,6 @@ export default function AdminPanel() {
             is_admin: formData.get('is_admin') === 'on'
         };
 
-        console.log(updates)
 
         try {
             const token = localStorage.getItem('token');
@@ -315,7 +314,6 @@ export default function AdminPanel() {
                         </Modal.Header>
                         <Form onSubmit={handleSaveUser}>
                             <Modal.Body>
-                                {console.log(selectedUser)}
                                 {selectedUser && (
                                     <>
                                         <Form.Group className="mb-3">

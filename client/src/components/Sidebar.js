@@ -49,23 +49,20 @@ const Sidebar = React.memo(({
 
   return (
     <aside className="bg-dark h-100" style={{ width: '380px'}}>
-      <div className="p-2 border-bottom">
-        <DatabaseSaveButton 
-          nodes={nodes}
-          tableData={tableData}
-          generateSQL={generateSQL}
-          generateDataInsertSQL={generateDataInsertSQL}
-          taskDescription={taskDescription}
-          result={result}
-          setCsvDecision={setCsvDecision}
-          csvDecision={csvDecision}
-        />
+      <div className="d-flex flex-column border-bottom p-2  flex-sm-row gap-2">
         <button 
           variant="outline-primary" 
           onClick={() => setShowImportModal(true)}
-          className="btn border ms-2"
+          className="btn border flex-fill"
         >
           <i className="bi bi-file-earmark-arrow-down"></i> Импорт SQL
+        </button>
+        <button 
+          variant="outline-primary" 
+          onClick={() => setShowImportModal(true)}
+          className="btn border flex-fill"
+        >
+          <i className="bi bi-file-earmark-arrow-down"></i> Форматировать схему
         </button>
       </div>
       <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>

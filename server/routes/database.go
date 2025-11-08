@@ -24,8 +24,6 @@ func SaveDatabase(c *gin.Context) {
 		Name         string `json:"Name"`
 		Schema       string `json:"Schema"`
 		SchemaInsert string `json:"SchemaInsert"`
-		Task         string `json:"Task"`
-		Decision     string `json:"Decision"`
 	}
 
 	if err := c.ShouldBindJSON(&dbInput); err != nil {
@@ -38,8 +36,6 @@ func SaveDatabase(c *gin.Context) {
 		Database_name:        dbInput.Name,
 		Database_create_text: dbInput.Schema,
 		Database_insert_text: dbInput.SchemaInsert,
-		Database_task:        dbInput.Task,
-		Database_decision:    dbInput.Decision,
 	}
 
 	if err := database.DB.Create(&db).Error; err != nil {
@@ -104,9 +100,41 @@ func GetDatabasesByID(c *gin.Context) {
 		"name":      db.Database_name,
 		"schema":    db.Database_create_text,
 		"data":      db.Database_insert_text,
-		"task":      db.Database_task,
-		"decision":  db.Database_decision,
 		"createdAt": db.CreatedAt,
+	})
+}
+
+func GetTasksByID(c *gin.Context) {
+
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid database ID"})
+		return
+	}
+
+	var task models.Tasks_list
+	if err := database.DB.Where("id = ?", id).First(&task).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Database not found"})
+		return
+	}
+
+	var db models.Database_lists
+	if err := database.DB.Where("id = ?", task.ID_database).First(&db).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Database not found"})
+		return
+	}
+
+	// Формируем ответ
+	c.JSON(http.StatusOK, gin.H{
+		"id":           task.ID,
+		"name":         task.Task_name,
+		"description":  task.Task_formulation,
+		"result":       task.Database_decision,
+		"nameDatabase": db.Database_name,
+		"create":       db.Database_create_text,
+		"insert":       db.Database_insert_text,
+		"createdAt":    task.CreatedAt,
 	})
 }
 
@@ -172,8 +200,6 @@ func UpdDatabasesByID(c *gin.Context) {
 	updates := models.Database_lists{
 		Database_create_text: updateData.Schema,
 		Database_insert_text: updateData.SchemaInsert,
-		Database_task:        updateData.Task,
-		Database_decision:    updateData.Decision,
 	}
 
 	if err := database.DB.Model(&db).Updates(updates).Error; err != nil {
@@ -200,19 +226,19 @@ func GetSolutionTask(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 
 	// Получаем задание из базы
-	var task models.Task_list
+	var task models.Solutions_list
 	if err := database.DB.Where("user_id = ? AND task_id = ? AND is_correct = ?", userID, id, true).First(&task).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Задание не найдено"})
 		return
 	}
 
 	// Сохраняем результат ПЕРЕД отправкой ответа клиенту
-    db := models.Task_list{
-        UserID:      userID,
-        TaskID:      id,
-        DecisionSQL: task.DecisionSQL,
-        IsCorrect:   task.IsCorrect, // Используем реальный результат проверки
-    }
+	db := models.Solutions_list{
+		UserID:      userID,
+		TaskID:      id,
+		DecisionSQL: task.DecisionSQL,
+		IsCorrect:   task.IsCorrect, // Используем реальный результат проверки
+	}
 
 	c.JSON(http.StatusOK, db)
 }
@@ -222,7 +248,7 @@ func GetSolutionTaskProfile(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 
 	// Получаем задание из базы
-	var task []models.Task_list
+	var task []models.Solutions_list
 	if err := database.DB.Where("user_id = ?", userID).First(&task).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Задание не найдено"})
 		return
@@ -281,8 +307,14 @@ func CheckSolutionWithSchema(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 
 	// Получаем задание из базы
-	var task models.Database_lists
+	var task models.Tasks_list
 	if err := database.DB.Where("id = ?", request.TaskID).First(&task).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Задание не найдено"})
+		return
+	}
+
+	var db_task models.Database_lists
+	if err := database.DB.Where("id = ?", task.ID_database).First(&db_task).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Задание не найдено"})
 		return
 	}
@@ -291,7 +323,7 @@ func CheckSolutionWithSchema(c *gin.Context) {
 	schemaName := generateSchemaName(userID, request.TaskID)
 
 	// Выполняем проверку в изолированной схеме
-	result, err := executeInSchema(schemaName, task.Database_create_text, task.Database_insert_text, request.SolutionSQL, task.Database_decision)
+	result, err := executeInSchema(schemaName, db_task.Database_create_text, db_task.Database_insert_text, request.SolutionSQL, task.Database_decision)
 	if err != nil {
 		// Логируем ошибку для отладки
 		log.Printf("Ошибка выполнения решения: %v", err)
@@ -306,43 +338,43 @@ func CheckSolutionWithSchema(c *gin.Context) {
 	result.ExecutionTime = time.Since(startTime)
 
 	// Сохраняем результат ПЕРЕД отправкой ответа клиенту
-    db := models.Task_list{
-        UserID:      userID,
-        TaskID:      request.TaskID,
-        DecisionSQL: request.SolutionSQL,
-        IsCorrect:   result.Success, // Используем реальный результат проверки
-    }
+	db := models.Solutions_list{
+		UserID:      userID,
+		TaskID:      request.TaskID,
+		DecisionSQL: request.SolutionSQL,
+		IsCorrect:   result.Success, // Используем реальный результат проверки
+	}
 
-	var existingTask models.Task_list
+	var existingTask models.Solutions_list
 	erro := database.DB.Where("user_id = ? AND task_id = ?", userID, request.TaskID).First(&existingTask).Error
 
 	if erro != nil {
-    // Запись не существует - создаем новую
-    	if err := database.DB.Create(&db).Error; err != nil {
-        	log.Printf("Ошибка создания записи задачи: %v", err)
-        	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save task"})
-        	return
-    	}
+		// Запись не существует - создаем новую
+		if err := database.DB.Create(&db).Error; err != nil {
+			log.Printf("Ошибка создания записи задачи: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save task"})
+			return
+		}
 	} else {
-    	// Запись существует - проверяем условия обновления
-    	shouldUpdate := false
-    
-    	if existingTask.IsCorrect {
-    	    // Если уже есть успешное решение - обновляем только если новое тоже успешное
-    	    if result.Success {
-    	        shouldUpdate = true
-    	    }
-    	} else {
-    	    // Если предыдущее решение было неуспешным - обновляем всегда
-    	    shouldUpdate = true
-    	}
-    
-    	if shouldUpdate {
-    	    if err := database.DB.Model(&existingTask).Updates(db).Error; err != nil {
-	    		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update database"})
-	    		return
+		// Запись существует - проверяем условия обновления
+		shouldUpdate := false
+
+		if existingTask.IsCorrect {
+			// Если уже есть успешное решение - обновляем только если новое тоже успешное
+			if result.Success {
+				shouldUpdate = true
 			}
-    	}
+		} else {
+			// Если предыдущее решение было неуспешным - обновляем всегда
+			shouldUpdate = true
+		}
+
+		if shouldUpdate {
+			if err := database.DB.Model(&existingTask).Updates(db).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update database"})
+				return
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, result)
@@ -628,12 +660,12 @@ func valuesEqual(a, b interface{}) bool {
 // validateSQL улучшенная проверка SQL
 func validateSQL(sql string) error {
 	blacklist := []string{
-		";", "--", "/*", "*/", 
-        "DROP", "CREATE", "ALTER", "TRUNCATE", 
-        "DELETE", "INSERT", "UPDATE",
-        "EXEC", "EXECUTE", "xp_", "sp_",
-        "UNION", "SELECT.*FROM", "INFORMATION_SCHEMA",
-        "pg_", "\\c", "\\dt", "\\dn",
+		";", "--", "/*", "*/",
+		"DROP", "CREATE", "ALTER", "TRUNCATE",
+		"DELETE", "INSERT", "UPDATE",
+		"EXEC", "EXECUTE", "xp_", "sp_",
+		"UNION", "SELECT.*FROM", "INFORMATION_SCHEMA",
+		"pg_", "\\c", "\\dt", "\\dn",
 	}
 
 	// Проверяем на наличие опасных операций со схемами

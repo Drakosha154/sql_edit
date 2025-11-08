@@ -49,13 +49,13 @@ func GetAdminStats(c *gin.Context) {
 	database.DB.Model(&models.Database_lists{}).Count(&stats.TotalTasks)
 	
 	// Общее количество решений
-	database.DB.Model(&models.Task_list{}).Count(&stats.TotalSolutions)
+	database.DB.Model(&models.Solutions_list{}).Count(&stats.TotalSolutions)
 	
 	// Количество пользователей с решениями (активных)
-	database.DB.Model(&models.Task_list{}).Distinct("user_id").Count(&stats.ActiveUsers)
+	database.DB.Model(&models.Solutions_list{}).Distinct("user_id").Count(&stats.ActiveUsers)
 	
 	// Количество верных решений
-	database.DB.Model(&models.Task_list{}).Where("is_correct = true").Count(&stats.CorrectSolutions)
+	database.DB.Model(&models.Solutions_list{}).Where("is_correct = true").Count(&stats.CorrectSolutions)
 
 	c.JSON(http.StatusOK, gin.H{"stats": stats})
 }
@@ -181,12 +181,11 @@ func GetAllTasks(c *gin.Context) {
 	response := make([]TaskResponse, len(tasks))
 	for i, task := range tasks {
 		var solutionsCount int64
-		database.DB.Model(&models.Task_list{}).Where("task_id = ?", task.ID).Count(&solutionsCount)
+		database.DB.Model(&models.Solutions_list{}).Where("task_id = ?", task.ID).Count(&solutionsCount)
 
 		response[i] = TaskResponse{
 			ID:           task.ID,
 			Name:         task.Database_name,
-			TaskText:     task.Database_task,
 			CreatorID:    task.ID_creator,
 			CreatorName:  task.Creator.Username,
 			CreatedAt:    task.CreatedAt.Format("2006-01-02 15:04"),
@@ -219,7 +218,7 @@ func DeleteTask(c *gin.Context) {
 	}
 
 	// Также удаляем все решения этого задания
-	database.DB.Where("task_id = ?", id).Delete(&models.Task_list{})
+	database.DB.Where("task_id = ?", id).Delete(&models.Solutions_list{})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
 }

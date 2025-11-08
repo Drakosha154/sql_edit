@@ -129,8 +129,6 @@ export default function Resolve() {
       });
 
       const data = await response.json();
-
-      console.log(data)
       
       if (!response.ok) {
         throw new Error(data.error || data.details || 'Ошибка проверки');

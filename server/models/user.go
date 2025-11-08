@@ -7,16 +7,17 @@ import (
 )
 
 type User struct {
-	ID        uint   	`gorm:"primaryKey"`
-	Username  string 	`gorm:"unique;not null"`
-	Email     string 	`gorm:"unique;not null"`
-	Password  string 	`gorm:"not null"`
+	ID        uint   `gorm:"primaryKey"`
+	Username  string `gorm:"unique;not null"`
+	Email     string `gorm:"unique;not null"`
+	Password  string `gorm:"not null"`
 	CreatedAt time.Time
-	IsAdmin   bool    	`gorm:"not null;default:false"`
+	IsAdmin   bool `gorm:"not null;default:false"`
 
 	// Relations
-    Databases []Database_lists `gorm:"foreignKey:ID_creator"`
-    Solutions []Task_list      `gorm:"foreignKey:UserID"`
+	Databases []Database_lists `gorm:"foreignKey:ID_creator"`
+	Tasks     []Tasks_list     `gorm:"foreignKey:ID_creator"`
+	Solutions []Solutions_list `gorm:"foreignKey:UserID"`
 }
 
 type Database_lists struct {
@@ -25,21 +26,37 @@ type Database_lists struct {
 	Database_name        string
 	Database_create_text string
 	Database_insert_text string
-	Database_decision    string
-	Database_task        string
 	CreatedAt            time.Time
 
 	// Связь с создателем
 	Creator User `gorm:"foreignKey:ID_creator"`
 }
 
-type Task_list struct {
-	ID          uint      `gorm:"primaryKey"`
-	UserID      uint      `gorm:"not null"`
-	TaskID      int       `gorm:"not null"`
-	DecisionSQL string    
+type Tasks_list struct {
+	ID                uint   `gorm:"primaryKey"`
+	ID_creator        uint   `gorm:"not null"`
+	Task_name         string `gorm:"not null"`
+	Task_formulation  string
+	Database_decision string
+	CreatedAt         time.Time
+	ID_database		  uint
+
+	// Связи
+	User User `gorm:"foreignKey:ID_creator"`
+}
+
+type Database_solution struct {
+	ID_database Database_lists `gorm:"foreignKey:ID_database"`
+	ID_task     Tasks_list     `gorm:"foreignKey:ID_task"`
+}
+
+type Solutions_list struct {
+	ID          uint `gorm:"primaryKey"`
+	UserID      uint `gorm:"not null"`
+	TaskID      int  `gorm:"not null"`
+	DecisionSQL string
 	IsCorrect   bool
-    UpdatedAt   time.Time
+	UpdatedAt   time.Time
 
 	// Связи
 	User User           `gorm:"foreignKey:UserID"`

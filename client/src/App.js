@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Navbar from './components/navbar';
 import ERDEditor from './pages/ERDEditor';
+import CreateDatabase from './pages/CreateDatabase';
+import CreateTask from './pages/CreateTask';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
@@ -28,6 +30,8 @@ function App() {
       <Navbar isAuth={isAuth} setAuth={setAuth} />
         <Routes>
           <Route path="/" element={<Main />} />
+          <Route path="/create_database/:id?" element={<CreateDatabase />} />
+          <Route path="/create_task/:id?" element={<CreateTask />} />
           <Route path="/create/:id?" element={<ERDEditor />} />
           <Route path="/login" element={<Login setAuth={setAuth} />} />
           <Route path="/register" element={<Register setAuth={setAuth} />} />

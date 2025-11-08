@@ -66,6 +66,7 @@ func main() {
 		authGroup.POST("/databases", routes.SaveDatabase)
 		authGroup.GET("/getdatabases", routes.GetUserDatabases)
 		authGroup.GET("/databases/:id", routes.GetDatabasesByID)
+		authGroup.GET("/tasks/:id", routes.GetTasksByID)
 		authGroup.DELETE("/databases/:id", routes.DelDatabasesByID)
 		authGroup.PATCH("/databases/:id", routes.UpdDatabasesByID)
 
@@ -77,6 +78,7 @@ func main() {
 		// Профиль пользователя
 		authGroup.GET("/profile/me", routes.GetMyProfile)
 		authGroup.GET("/users/:id/databases", routes.GetUserDatabasesProfile)
+		authGroup.GET("/users/:id/task", routes.GetUserTasks)
 		authGroup.GET("/users/:id/solutions", routes.GetUserSolutions)
 		authGroup.GET("/tasks/:id/solutions", routes.GetTaskSolutions)
 

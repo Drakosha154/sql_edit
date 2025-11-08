@@ -33,7 +33,7 @@ function jsonToCsv(data) {
   return csv;
 }
 
-export default function SaveDatabaseButton({ nodes, tableData, generateSQL, generateDataInsertSQL, taskDescription, result, setCsvDecision }) {
+export default function SaveDatabaseButton({ nodes, tableData, generateSQL, generateDataInsertSQL, result, setCsvDecision }) {
   const [show, setShow] = useState(false);
   const [sqlCode, setSqlCode] = useState('');
   const [sqlCodeInsert, setsqlCodeInsert] = useState('');
@@ -47,7 +47,7 @@ export default function SaveDatabaseButton({ nodes, tableData, generateSQL, gene
   
       const currentSqlCode = generateSQL();
       const currentSqlInsert = generateDataInsertSQL(nodes, tableData);
-      const currentScv = jsonToCsv(result);
+      //const currentScv = jsonToCsv(result);
 
       const response = await fetch(`${API_BASE_URL}/api/databases`, {
         method: 'POST',
@@ -59,15 +59,15 @@ export default function SaveDatabaseButton({ nodes, tableData, generateSQL, gene
           Name: name,
           Schema: currentSqlCode,
           SchemaInsert: currentSqlInsert,
-          Task: taskDescription,
-          Decision: currentScv
+          //Task: taskDescription,
+          //Decision: currentScv
         })
       });
 
       if (!response.ok) throw new Error('Ошибка сохранения');
       setSqlCode(currentSqlCode);
       setsqlCodeInsert(currentSqlInsert);
-      setCsvDecision(currentScv);
+      //setCsvDecision(currentScv);
       setShow(false);
       alert('База данных успешно создана!');
     } catch (error) {
@@ -80,7 +80,7 @@ export default function SaveDatabaseButton({ nodes, tableData, generateSQL, gene
       if (id) {
         const currentSqlCode = generateSQL();
         const currentSqlInsert = generateDataInsertSQL(nodes, tableData);
-        const currentScv = jsonToCsv(result);
+        //const currentScv = jsonToCsv(result);
 
         const response = await fetch(`${API_BASE_URL}/api/databases/${id}`, {
         method: 'PATCH',
@@ -92,15 +92,15 @@ export default function SaveDatabaseButton({ nodes, tableData, generateSQL, gene
           Id: id,
           Schema: currentSqlCode ,
           SchemaInsert: currentSqlInsert,
-          Task: taskDescription,
-          Decision: currentScv,
+          //Task: taskDescription,
+          //Decision: currentScv,
         })
       });
 
       if (!response.ok) throw new Error('Ошибка сохранения');
       setSqlCode(currentSqlCode);
       setsqlCodeInsert(currentSqlInsert);
-      setCsvDecision(currentScv);
+      //setCsvDecision(currentScv);
       setShow(false);
       alert('База данных успешно сохранена!');
       navigate('/profile')

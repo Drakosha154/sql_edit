@@ -1,15 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Form, Row, Col, Card, ListGroup, Spinner } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL
 
-console.log(API_BASE_URL)
-
 export default function SearchUsers() {
+    const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (localStorage.getItem('token')) {
+            const token = localStorage.getItem('token');
+            if (isTokenExpired(token)) {
+                localStorage.removeItem('token');
+                navigate(`/login`)
+            }
+        } else {
+            navigate(`/login`);
+        }
+    });
+
+    const isTokenExpired = (token) => {
+        if (!token) return true;
+         try {
+            const decodedToken = jwtDecode(token);
+            const currentTime = Date.now() / 1000;
+            return decodedToken.exp < currentTime;
+        } catch (error) {
+            console.error('Error decoding token:', error);
+            return true;
+        }
+    };
 
     const handleSearch = async (query) => {
         if (query.length < 2) {

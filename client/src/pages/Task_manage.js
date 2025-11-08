@@ -94,6 +94,30 @@ export default function Task_manage({
   setNewRow(resetRow);
 };
 
+  // Удаление строки
+  const handleDeleteRow = (index) => {
+    if (!selectedTable || !tableData[selectedTable]) return;
+    
+    const updatedData = tableData[selectedTable].filter((_, i) => i !== index);
+    
+    setTableData({
+      ...tableData,
+      [selectedTable]: updatedData
+    });
+  };
+
+  // Очистка всей таблицы
+  const handleClearTable = () => {
+    if (!selectedTable) return;
+    
+    if (window.confirm(`Вы уверены, что хотите удалить все данные из таблицы "${selectedTable}"?`)) {
+      setTableData({
+        ...tableData,
+        [selectedTable]: []
+      });
+    }
+  };
+
   // Генерация случайных данных
   const generateRandomData = () => {
     if (!selectedTable) return;
@@ -230,7 +254,7 @@ export default function Task_manage({
                       <Form.Label>{col.name} ({col.type})</Form.Label>
                       <Form.Control
                         type={col.type === 'integer' ? 'number' : 'text'}
-                        value={newRow[col.name] || ''} // Убрали пробел, оставили пустую строку
+                        value={newRow[col.name] || ''}
                         onChange={(e) => setNewRow({
                           ...newRow,
                           [col.name]: e.target.value
@@ -261,6 +285,16 @@ export default function Task_manage({
                   >
                     <i className="bi bi-file-earmark-arrow-down"></i> Импорт данных SQL
                   </Button>
+                  
+                  {/* Кнопка очистки таблицы */}
+                  <Button 
+                    variant="outline-danger" 
+                    onClick={handleClearTable}
+                    className="w-100 mt-3"
+                    disabled={!currentTableData.length}
+                  >
+                    <i className="bi bi-trash"></i> Очистить таблицу
+                  </Button>
                 </>
               )}
             </Card.Body>
@@ -269,12 +303,21 @@ export default function Task_manage({
 
         <Col md={9}>
           <Card className="h-100">
-            <Card.Header className="bg-dark text-white d-flex justify-content-between">
+            <Card.Header className="bg-dark text-white d-flex justify-content-between align-items-center">
               <h5>Данные таблицы: {selectedTable || 'не выбрана'}</h5>
               {selectedTable && (
-                <span>
-                  Записей: {currentTableData.length}
-                </span>
+                <div>
+                  <span className="me-3">Записей: {currentTableData.length}</span>
+                  {currentTableData.length > 0 && (
+                    <Button 
+                      variant="outline-danger" 
+                      size="sm"
+                      onClick={handleClearTable}
+                    >
+                      <i className="bi bi-trash"></i> Очистить все
+                    </Button>
+                  )}
+                </div>
               )}
             </Card.Header>
             <Card.Body className="overflow-auto p-0">
@@ -285,6 +328,7 @@ export default function Task_manage({
                       {tables.find(t => t.name === selectedTable).columns.map(col => (
                         <th key={col.name}>{col.name}</th>
                       ))}
+                      <th width="100">Действия</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -293,8 +337,29 @@ export default function Task_manage({
                         {Object.values(row).map((val, j) => (
                           <td key={j}>{val}</td>
                         ))}
+                        <td className="text-center">
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            onClick={() => handleDeleteRow(i)}
+                            title="Удалить запись"
+                          >
+                            <i className="bi bi-trash"></i>
+                          </Button>
+                        </td>
                       </tr>
                     ))}
+                    {currentTableData.length === 0 && (
+                      <tr>
+                        <td 
+                          colSpan={tables.find(t => t.name === selectedTable).columns.length + 1}
+                          className="text-center text-muted py-4"
+                        >
+                          <i className="bi bi-inbox fs-1"></i>
+                          <p className="mt-2">Нет данных</p>
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </Table>
               ) : (

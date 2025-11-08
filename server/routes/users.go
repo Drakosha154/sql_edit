@@ -28,7 +28,7 @@ func GetTaskSolutions(c *gin.Context) {
 	}
 
 	// Получаем все решения для этой задачи
-	var solutions []models.Task_list
+	var solutions []models.Solutions_list
 	result := database.DB.
 		Where("task_id = ?", id).
 		Order("updated_at DESC").
@@ -79,7 +79,7 @@ func GetTaskSolutions(c *gin.Context) {
 }
 
 // Вспомогательная функция для подсчета верных решений
-func countCorrectSolutions(solutions []models.Task_list) int {
+func countCorrectSolutions(solutions []models.Solutions_list) int {
 	count := 0
 	for _, solution := range solutions {
 		if solution.IsCorrect {
@@ -113,11 +113,11 @@ func GetMyProfile(c *gin.Context) {
 		Where("id_creator = ?", user.ID).
 		Count(&stats.DatabaseCount)
 
-	database.DB.Model(&models.Task_list{}).
+	database.DB.Model(&models.Solutions_list{}).
 		Where("user_id = ?", user.ID).
 		Count(&stats.SolvedCount)
 
-	database.DB.Model(&models.Task_list{}).
+	database.DB.Model(&models.Solutions_list{}).
 		Where("user_id = ? AND is_correct = true", user.ID).
 		Count(&stats.CorrectCount)
 
@@ -207,11 +207,11 @@ func GetUserProfileMain(c *gin.Context) {
 		Where("id_creator = ?", user.ID).
 		Count(&stats.DatabaseCount)
 
-	database.DB.Model(&models.Task_list{}).
+	database.DB.Model(&models.Solutions_list{}).
 		Where("user_id = ?", user.ID).
 		Count(&stats.SolvedCount)
 
-	database.DB.Model(&models.Task_list{}).
+	database.DB.Model(&models.Solutions_list{}).
 		Where("user_id = ? AND is_correct = true", user.ID).
 		Count(&stats.CorrectCount)
 
@@ -249,6 +249,30 @@ func GetUserDatabasesProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"databases": databases})
 }
 
+func GetUserTasks(c *gin.Context) {
+
+	userID := c.Param("id")
+
+	id, err := strconv.Atoi(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	var tasks []models.Tasks_list
+	result := database.DB.
+		Select("id", "task_name", "created_at").
+		Where("id_creator = ?", id).
+		Find(&tasks)
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user tasks"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"tasks": tasks})
+}
+
 // GetUserSolutions получение решений пользователя
 func GetUserSolutions(c *gin.Context) {
 	userID := c.Param("id")
@@ -259,7 +283,7 @@ func GetUserSolutions(c *gin.Context) {
 		return
 	}
 
-	var solutions []models.Task_list
+	var solutions []models.Solutions_list
 	result := database.DB.
 		Where("user_id = ?", id).
 		Order("updated_at DESC").
