@@ -346,7 +346,7 @@ export default function Profile() {
                     {/* Модальное окно для статистики решений */}
                     <Modal show={showStatsModal} onHide={() => setShowStatsModal(false)} size="lg">
                         <Modal.Header closeButton>
-                            <Modal.Title>Статистика решений задания #{selectedTask}</Modal.Title>
+                            <Modal.Title>Статистика решений задания</Modal.Title>
                         </Modal.Header>
                         <Modal.Body>
                             {taskSolutions.length > 0 ? (

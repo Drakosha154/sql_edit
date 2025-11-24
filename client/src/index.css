@@ -11,3 +11,84 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+[data-bs-theme="dark"] {
+  --entity-bg-color: #23c9fc;
+  --entity-header-bg: #0f172b;
+  --entity-header-color: #f8f9fa;
+  --attribute-bg: #334155;
+  --attribute-hover-bg: #475569;
+  --attribute-text-color: white;
+  --attribute-type-color: #b0b0b0;
+  --handle-target-color: #ff0072;
+  --handle-source-color: #0072fd;
+  --primary-key-color: #ffd700;
+}
+
+[data-bs-theme="light"] {
+  --entity-bg-color: #23c9fc;
+  --entity-header-bg: #727783;
+  --entity-header-color: #f8f9fa;
+  --attribute-bg: #ebedf0;
+  --attribute-hover-bg: #dee2e6;
+  --attribute-text-color: #333333;
+  --attribute-type-color: #6c757d;
+  --handle-target-color: #dc3545;
+  --handle-source-color: #0d6efd;
+  --primary-key-color: #ffc107;
+}
+
+[data-bs-theme="light"] {
+  --modal-header-bg: #f8f9fa;
+  --modal-header-color: #212529;
+  --preview-bg: #ffffff;
+  --modal-footer-bg: #f8f9fa;
+  --controls-bg: #e9ecef;
+  --controls-shadow: rgba(0,0,0,0.1);
+  --controls-btn-bg: #ffffff;
+  --controls-btn-color: #495057;
+  --controls-btn-hover: #dee2e6;
+  --controls-border: #ced4da;
+  --minimap-bg: #ffffff;
+  --minimap-border: #dee2e6;
+  --flow-bg: #ffffff;
+  --background-dots: #dee2e6;
+  --legend-bg: #e9ecef;
+  --legend-color: #495057;
+  --legend-border: #dee2e6;
+  --relation-one-to-many: #198754;
+  --relation-one-to-one: #0d6efd;
+  --relation-many-to-many: #dc3545;
+  --edge-label-bg: #0d6efd;
+  --edge-label-color: white;
+  --edge-label-border: #0a58ca;
+  --node-shadow: rgba(0,0,0,0.1);
+}
+
+/* Тёмная тема */
+[data-bs-theme="dark"] {
+  --modal-header-bg: #1a1d20;
+  --modal-header-color: #f8f9fa;
+  --preview-bg: #121212;
+  --modal-footer-bg: #1a1d20;
+  --controls-bg: #2d3748;
+  --controls-shadow: rgba(0,0,0,0.5);
+  --controls-btn-bg: #4a5568;
+  --controls-btn-color: #f7fafc;
+  --controls-btn-hover: #718096;
+  --controls-border: #4a5568;
+  --minimap-bg: #2d3748;
+  --minimap-border: #4a5568;
+  --flow-bg: #27292b;
+  --background-dots: #4a5568;
+  --legend-bg: #2d3748;
+  --legend-color: #f7fafc;
+  --legend-border: #4a5568;
+  --relation-one-to-many: #198754;
+  --relation-one-to-one: #0d6efd;
+  --relation-many-to-many: #dc3545;
+  --edge-label-bg: #0d6efd;
+  --edge-label-color: white;
+  --edge-label-border: #0a58ca;
+  --node-shadow: rgba(0,0,0,0.3);
+}

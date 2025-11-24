@@ -36,3 +36,25 @@
     transform: rotate(360deg);
   }
 }
+
+[data-bs-theme="dark"] {
+  --entity-bg-color: #1e3a5f;
+  --entity-header-bg: #0f172b;
+  --entity-header-color: #f8f9fa;
+  --attribute-bg: #334155;
+  --attribute-hover-bg: #475569;
+  --handle-target-color: #ff0072;
+  --handle-source-color: #0072ff;
+  --primary-key-color: #ffd700;
+}
+
+[data-bs-theme="light"] {
+  --entity-bg-color: #f0f9ff;
+  --entity-header-bg: #0f172b;
+  --entity-header-color: #f8f9fa;
+  --attribute-bg: #e9ecef;
+  --attribute-hover-bg: #dee2e6;
+  --handle-target-color: #dc3545;
+  --handle-source-color: #0d6efd;
+  --primary-key-color: #ffc107;
+}

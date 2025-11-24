@@ -40,75 +40,72 @@ export default function Resolve() {
   const [checkResult, setCheckResult] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [idDatabase, setIdDatabase] = useState('');
+  const [taskName, setTaskName] = useState('');
 
   const { id } = useParams();
+
+ useEffect(() => {
+  const fetchAllData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // 1. Получаем задание
+      const taskResponse = await fetch(`${API_BASE_URL}/api/tasks/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!taskResponse.ok) throw new Error(`HTTP error! status: ${taskResponse.status}`);
+      const taskData = await taskResponse.json();
+      
+      setIdDatabase(taskData.id_database);
+      setTaskName(taskData.name);
+      setTaskDescription(taskData.description);
+
+      // 2. Если есть idDatabase, получаем остальные данные
+      if (taskData.id_database) {
+        // Получаем схему и данные БД
+        const dbResponse = await fetch(`${API_BASE_URL}/api/databases/${taskData.id_database}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (dbResponse.ok) {
+          const dbData = await dbResponse.json();
+          handleImportSQL(dbData.schema);
+          handleImportSQLInsert(dbData.data);
+          if (dbData.decision) {
+            const resultData = csvToJson(dbData.decision);
+            setResult(resultData);
+          }
+        }
+
+        // Получаем решение
+        const solutionResponse = await fetch(`${API_BASE_URL}/api/get-solution/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (solutionResponse.ok) {
+          const solutionData = await solutionResponse.json();
+          setSolutionCode(solutionData.DecisionSQL);
+        }
+      }
+
+    } catch (error) {
+      console.error("Ошибка загрузки:", error);
+      setImportError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
-  useEffect(() => {
-    const fetchUserDatabases = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch(`${API_BASE_URL}/api/databases/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const text = await response.text();
-          throw new Error(`Ожидался JSON, но получен: ${text.substring(0, 100)}...`);
-        }
-
-        const data = await response.json();
-        handleImportSQL(data.schema);
-        handleImportSQLInsert(data.data);
-        setTaskDescription(data.task);
-
-        if (data.decision) {
-          const resultData = csvToJson(data.decision);
-          setResult(resultData);
-        }
-
-      } catch (error) {
-        console.error("Ошибка загрузки:", error);
-        setImportError(error.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchUserDatabases();  
-  }, [id]);
-
-  useEffect(() => {
-    const fetchUserDatabases = async () => {
-      try {
-      const response = await fetch(`${API_BASE_URL}/api/get-solution/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        setSolutionCode(data.DecisionSQL)
-
-      } catch (error) {
-        console.error("Ошибка загрузки:", error);
-      } finally {
-      }
-    };
-    
-    fetchUserDatabases();  
-  }, [id]);
+  fetchAllData(); 
+}, [id]);
 
   const checkSolution = async () => {
     setIsChecking(true);
@@ -279,10 +276,10 @@ export default function Resolve() {
       <Row>
         <Col>
           <Card>
-            <Card.Header className="bg-primary text-white">
+            <Card.Header className="bg-primary">
               <h5 className="mb-0">
                 <i className="bi bi-database me-2"></i>
-                Решение задания #{id}
+                Решение задания "{taskName}"
               </h5>
             </Card.Header>
             

@@ -1,4 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import ThemeToggle from './ThemeToggle.js';
+import { useTheme } from './ThemeContext';
 
 export default function Navbar({ isAuth, setAuth }) {
   const navigate = useNavigate();
@@ -26,6 +28,9 @@ export default function Navbar({ isAuth, setAuth }) {
               </>
             ) : (
               <>
+                <li className="nav-item">
+                  <ThemeToggle />
+                </li>
                 <li className="nav-item">
                   <NavLink to="/profile" className="nav-link">Профиль</NavLink>
                 </li>

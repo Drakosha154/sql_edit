@@ -32,7 +32,7 @@ const TaskPreview = ({ nodes, edges, setNodes, onNodesChange, onEdgesChange, tas
       <Row className="h-100">
         <Col md={6} className="h-100">
           <Card className="h-100">
-            <Card.Header className="bg-dark text-white">
+            <Card.Header className="">
               <h5>Редактирование задания</h5>
             </Card.Header>
             <Card.Body className="overflow-auto">
@@ -62,7 +62,7 @@ const TaskPreview = ({ nodes, edges, setNodes, onNodesChange, onEdgesChange, tas
         
         <Col md={6} className="h-100">
           <Card className="h-100">
-            <Card.Header className="bg-dark text-white">
+            <Card.Header className="">
               <h5>Предпросмотр задания</h5>
             </Card.Header>
             <Card.Body className="overflow-auto">
@@ -70,7 +70,7 @@ const TaskPreview = ({ nodes, edges, setNodes, onNodesChange, onEdgesChange, tas
                 <h3>SQL Задание</h3>
                 <div className="task-description mb-4">
                   {taskDescription || (
-                    <div className="text-muted">
+                    <div className="">
                       <i className="bi bi-info-circle"></i> Условие задачи не заполнено
                     </div>
                   )}

@@ -135,6 +135,7 @@ func GetTasksByID(c *gin.Context) {
 		"create":       db.Database_create_text,
 		"insert":       db.Database_insert_text,
 		"createdAt":    task.CreatedAt,
+		"id_database":  task.ID_database,
 	})
 }
 

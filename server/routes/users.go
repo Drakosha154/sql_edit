@@ -21,7 +21,7 @@ func GetTaskSolutions(c *gin.Context) {
 	}
 
 	// Проверяем существование задачи
-	var task models.Database_lists
+	var task models.Tasks_list
 	if err := database.DB.First(&task, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
 		return
@@ -67,7 +67,7 @@ func GetTaskSolutions(c *gin.Context) {
     c.JSON(http.StatusOK, gin.H{
         "task": gin.H{
             "id":   task.ID,
-            "name": task.Database_name,
+            "name": task.Task_name,
         },
         "solutions": response,
         "count": gin.H{
@@ -306,8 +306,8 @@ func GetUserSolutions(c *gin.Context) {
 
 	response := make([]SolutionWithTask, len(solutions))
 	for i, solution := range solutions {
-		var task models.Database_lists
-		database.DB.Select("database_name").First(&task, solution.TaskID)
+		var task models.Tasks_list
+		database.DB.Select("task_name").First(&task, solution.TaskID)
 
 		response[i] = SolutionWithTask{
 			ID:          solution.ID,
@@ -315,7 +315,7 @@ func GetUserSolutions(c *gin.Context) {
 			DecisionSQL: solution.DecisionSQL,
 			IsCorrect:   solution.IsCorrect,
 			CreatedAt:   solution.UpdatedAt,
-			TaskName:    task.Database_name,
+			TaskName:    task.Task_name,
 		}
 	}
 

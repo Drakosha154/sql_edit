@@ -12,6 +12,7 @@ import Main from './pages/Main';
 import UserProfile from './pages/UserProfile'
 import AdminPanel from './pages/AdminPanel'
 import ProtectedRoute from './components/ProtectedRoute'
+import { ThemeProvider } from './components/ThemeContext';
 
 function App() {
   const [isAuth, setAuth] = useState(false);
@@ -26,6 +27,7 @@ function App() {
   }, []);
 
   return (
+    <ThemeProvider> 
     <div className="erd-container d-flex flex-column vh-100">
       <Navbar isAuth={isAuth} setAuth={setAuth} />
         <Routes>
@@ -45,6 +47,7 @@ function App() {
           } />
         </Routes>
     </div>
+    </ThemeProvider> 
   );
 }
 

@@ -20,7 +20,7 @@ export default function UserProfile() {
     const { id } = useParams();
     const [user, setUser] = useState(null);
     const [stats, setStats] = useState(null);
-    const [databases, setDatabases] = useState([]);
+    const [tasks, setTasks] = useState([]);
     const [solutions, setSolutions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -29,7 +29,7 @@ export default function UserProfile() {
 
     useEffect(() => {
         fetchUserProfile();
-        fetchUserDatabases();
+        fetchUserTask();
         fetchUserSolutions();
     }, [id]);
 
@@ -68,16 +68,16 @@ export default function UserProfile() {
         }
     };
 
-    const fetchUserDatabases = async () => {
+    const fetchUserTask = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/api/users/${id}/databases`, {
+            const response = await fetch(`${API_BASE_URL}/api/users/${id}/task`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
             const data = await response.json();
-            setDatabases(data.databases);
+            setTasks(data.tasks);
         } catch (err) {
             console.error('Failed to fetch databases:', err);
         }
@@ -164,11 +164,12 @@ export default function UserProfile() {
                         <Tab eventKey="databases" title="Базы данных">
                             <Card>
                                 <Card.Body>
-                                    {databases.length > 0 ? (
+                                    {tasks.length > 0 ? (
                                         <div className="list-group m-2">
-                                            {databases.map(db => (
+                                            {tasks.map(db => (
                                             <div key={db.ID} className="list-group-item border m-2">
-                                                <h5>Номер задания {db.ID}</h5>
+                                                {console.log(db)}
+                                                <h5>{db.Task_name}</h5>
                                                 <small>{new Date(db.CreatedAt).toLocaleDateString()}</small>
                                                 <div className="mt-2">
                                                     <button className="btn btn-sm btn-outline-success me-2" onClick={() => handleResolve(db.ID)}>

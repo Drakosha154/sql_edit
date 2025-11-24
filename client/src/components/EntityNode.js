@@ -1,6 +1,7 @@
 import React from 'react';
 import { Handle, Position} from 'reactflow';
 import { useState } from 'react';
+import './EntityNode.css';
 
 
 const DEFAULT_HANDLE_STYLE = {
@@ -12,39 +13,22 @@ const EntityNode = ({ id, data }) => {
   const [hoveredAttr, setHoveredAttr] = useState(null);
 
   return (
-    <div className="entity-node border border-2 overflow-visible" style={{
-      borderRadius: '4px',
-      backgroundColor: 'rgb(1 191 255)',
-      paddingTop: "7px",
-      overflow: 'hidden',
-      minWidth: '200px',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-      position: 'relative' // Необходимо для позиционирования хендлов
-      }}>
+    <div className="entity-node border border-2 overflow-visible" >
       {/* Заголовок сущности */}
-      <div className="border-bottom" style={{
-        backgroundColor: 'rgb(15 23 43)',
-        padding: '8px 12px',
-        fontWeight: 'bold',
-
-      }}>
+      <div className="border-bottom entity-header" >
         <i className="bi bi-table pe-2"></i>
         {data.label}
       </div>
       
       {/* Список атрибутов */}
       <div className="position-relative">
-        <div style={{ maxHeight: '20rem'}}>
-
-
+        <div className="entity-attributes-container">
           {data.attributes.map((attr) => (
           <div 
             key={attr.id}
             className="attribute-row position-relative d-flex border-bottom border-1 mb"
             onMouseEnter={() => setHoveredAttr(attr.id)}
             onMouseLeave={() => setHoveredAttr(null)}
-            style={{
-            backgroundColor: 'rgb(51 65 85)'}}
           >
             {/* Target Handle (слева) */}
             <div className="handle-container left">
@@ -52,23 +36,16 @@ const EntityNode = ({ id, data }) => {
                 type="target"
                 position={Position.Left}
                 id={`${attr.id}`}
-                style={{ 
-                  opacity: hoveredAttr === attr.id ? 1 : 0.3,
-                  background: '#ff0072',
-                  width: 8,
-                  height: 8,
-                  transition: 'opacity 0.2s'
-                }}
                 isConnectable={true}
               />
             </div>
 
             {/* Содержимое атрибута */}
-            <div className="d-flex item-cente justify-content-start me-auto px-2">
+            <div className="attribute-content">
               <span>{attr.name}</span>
             </div>
             <div className="d-flex justify-content-end px-2">
-              <div className="center text-muted">
+              <div className="attribute-type">
                 {attr.isPrimary &&
                   <i className="bi bi-key"> </i>
                 }

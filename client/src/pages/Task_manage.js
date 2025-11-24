@@ -226,7 +226,7 @@ export default function Task_manage({
       <Row className="h-100">
         <Col md={3} className="mb-3">
           <Card className="h-100">
-            <Card.Header className="bg-dark text-white">
+            <Card.Header className="">
               <h5>Управление данными</h5>
             </Card.Header>
             <Card.Body className="overflow-auto">
@@ -303,7 +303,7 @@ export default function Task_manage({
 
         <Col md={9}>
           <Card className="h-100">
-            <Card.Header className="bg-dark text-white d-flex justify-content-between align-items-center">
+            <Card.Header className="d-flex justify-content-between align-items-center">
               <h5>Данные таблицы: {selectedTable || 'не выбрана'}</h5>
               {selectedTable && (
                 <div>
@@ -353,7 +353,7 @@ export default function Task_manage({
                       <tr>
                         <td 
                           colSpan={tables.find(t => t.name === selectedTable).columns.length + 1}
-                          className="text-center text-muted py-4"
+                          className="text-center py-4"
                         >
                           <i className="bi bi-inbox fs-1"></i>
                           <p className="mt-2">Нет данных</p>
@@ -363,7 +363,7 @@ export default function Task_manage({
                   </tbody>
                 </Table>
               ) : (
-                <div className="text-center p-5 text-muted">
+                <div className="text-center p-5">
                   <i className="bi bi-table fs-1"></i>
                   <p>Выберите таблицу для просмотра и редактирования данных</p>
                 </div>

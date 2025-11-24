@@ -14,6 +14,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import "bootstrap-icons/font/bootstrap-icons.css";
 import EntityNode from '../components/EntityNode';
 import { useDagreLayout } from '../utils/useDagreLayout';
+import './DatabaseVisualPreview.css'; // Импортируем CSS файл
 
 const nodeTypes = { entity: EntityNode };
 
@@ -51,9 +52,9 @@ const DatabaseVisualPreview = ({ nodes, edges, setNodes, onNodesChange, onEdgesC
     });
 
     const relationColors = {
-      'one-to-one': '#0d6efd',
-      'one-to-many': '#198754',
-      'many-to-many': '#dc3545'
+      'one-to-one': 'var(--relation-one-to-one, #0d6efd)',
+      'one-to-many': 'var(--relation-one-to-many, #198754)',
+      'many-to-many': 'var(--relation-many-to-many, #dc3545)'
     };
 
     const edgeColor = relationColors[data?.relationType] || '#6c757d';
@@ -67,15 +68,11 @@ const DatabaseVisualPreview = ({ nodes, edges, setNodes, onNodesChange, onEdgesC
         />
         <EdgeLabelRenderer>
           <div
+            className="custom-edge-label"
             style={{
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
               background: edgeColor,
-              color: 'white',
-              padding: '2px 8px',
-              borderRadius: '10px',
-              fontSize: '12px',
-              fontWeight: 'bold',
             }}
           >
             {data?.label || '1:N'}
@@ -103,7 +100,7 @@ const DatabaseVisualPreview = ({ nodes, edges, setNodes, onNodesChange, onEdgesC
       <Button 
         variant="outline-primary" 
         onClick={handleAutoLayout}
-        className=""
+        className="database-preview-btn"
       >
         <i className="bi bi-diagram-3 me-2"></i>
         Просмотр схемы базы данных
@@ -114,8 +111,9 @@ const DatabaseVisualPreview = ({ nodes, edges, setNodes, onNodesChange, onEdgesC
         onHide={() => setShowPreview(false)}
         size="xl"
         fullscreen="lg-down"
+        className="preview-modal"
       >
-        <Modal.Header closeButton className="bg-dark text-white">
+        <Modal.Header closeButton>
           <Modal.Title>Визуальная схема базы данных</Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-0" style={{ height: '70vh' }}>
@@ -129,14 +127,9 @@ const DatabaseVisualPreview = ({ nodes, edges, setNodes, onNodesChange, onEdgesC
             nodesConnectable={false}
             fitView
           >
-            <Background variant="dots" color="#4a5568" gap={16} size={1} />
-            <Controls position="top-right" style={{ 
-                backgroundColor: '#2d3748', 
-                borderRadius: '4px',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.5)' 
-            }}>
-            </Controls>
-            <MiniMap position="bottom-right" style={{ backgroundColor: '#2d3748' }} />
+            <Background variant="dots" gap={16} size={1} />
+            <Controls position="top-right" />
+            <MiniMap position="bottom-right" />
             <Background />
             
             <Panel>
@@ -160,139 +153,6 @@ const DatabaseVisualPreview = ({ nodes, edges, setNodes, onNodesChange, onEdgesC
           </Button>
         </Modal.Footer>
       </Modal>
-
-      <style jsx>{`
-        .erd-preview-node {
-          border: 2px solid #4a5568;
-          border-radius: 4px;
-          background: rgb(51, 65, 85);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-          width: 250px;
-        }
-        
-        .erd-preview-node-header {
-          background: rgb(15, 23, 43);
-          color: white;
-          padding: 8px 12px;
-          font-weight: bold;
-          border-top-left-radius: 4px;
-          border-top-right-radius: 4px;
-        }
-
-        .erd-edge-label {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 15px;
-            padding: 2px 8px;
-            text-align: center;
-            font-size: 12px;
-            font-weight: bold;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        .react-flow__edge-path {
-            stroke-width: 2;
-        }
-        
-        .erd-preview-node-body {
-          padding: 8px;
-        }
-        
-        .erd-preview-attribute {
-          display: flex;
-          justify-content: space-between;
-          padding: 4px 0;
-          border-bottom: 1px solid #4a5568;
-          font-size: 12px;
-        }
-        
-        .erd-preview-attribute:last-child {
-          border-bottom: none;
-        }
-        
-        .attribute-name {
-          font-weight: 500;
-        }
-        
-        .attribute-type {
-          color: #666;
-        }
-        
-        .attribute-pk {
-          background: #0d6efd;
-          color: white;
-          padding: 0 4px;
-          border-radius: 3px;
-          font-size: 10px;
-        }
-        
-        .attribute-null {
-          background: #fd7e14;
-          color: white;
-          padding: 0 4px;
-          border-radius: 3px;
-          font-size: 10px;
-        }
-        
-        .erd-preview-edge-label {
-          background: white;
-          padding: 2px 8px;
-          border-radius: 10px;
-          border: 1px solid #999;
-          font-size: 12px;
-          font-weight: bold;
-        }
-        
-        .erd-legend {
-          background: rgb(51, 65, 85);
-          padding: 8px 12px;
-          border-radius: 4px;
-          display: flex;
-          gap: 15px;
-          font-size: 14px;
-        }
-        
-        .legend-item {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-        }
-        
-        .legend-pk {
-          background: #0d6efd;
-          color: white;
-          padding: 0 4px;
-          border-radius: 3px;
-        }
-        
-        .legend-null {
-          background: #fd7e14;
-          color: white;
-          padding: 0 4px;
-          border-radius: 3px;
-        }
-        
-        .legend-1n {
-          background: #198754;
-          color: white;
-          padding: 0 4px;
-          border-radius: 3px;
-        }
-        
-        .legend-11 {
-          background: #0dcaf0;
-          color: white;
-          padding: 0 4px;
-          border-radius: 3px;
-        }
-        
-        .legend-nn {
-          background: #dc3545;
-          color: white;
-          padding: 0 4px;
-          border-radius: 3px;
-        }
-      `}</style>
     </>
   );
 };

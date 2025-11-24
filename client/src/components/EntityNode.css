@@ -1,0 +1,81 @@
+.entity-node {
+  border: var(--bs-border-width) var(--bs-border-style) var(--bs-border-color);
+  border-radius: 4px;
+  background-color: var(--entity-bg-color, rgb(1 191 255));
+  padding-top: 7px;
+  overflow: hidden;
+  min-width: 200px;
+  box-shadow: 0 2px 8px var(--entity-shadow-color, rgba(0,0,0,0.1));
+  position: relative;
+}
+
+.entity-header {
+  background-color: var(--entity-header-bg, rgb(15 23 43));
+  padding: 8px 12px;
+  font-weight: bold;
+  border-bottom: var(--bs-border-width) var(--bs-border-style) var(--bs-border-color);
+  color: var(--entity-header-color, white);
+}
+
+.entity-attributes-container {
+  max-height: 20rem;
+}
+
+.attribute-row {
+  position: relative;
+  display: flex;
+  border-bottom: var(--bs-border-width) var(--bs-border-style) var(--bs-border-color);
+  background-color: var(--attribute-bg, rgb(51 65 85));
+  margin-bottom: 0;
+  transition: background-color 0.2s ease;
+}
+
+.attribute-row:hover {
+  background-color: var(--attribute-hover-bg, rgb(71 85 105));
+}
+
+.handle-container {
+  display: flex;
+  align-items: center;
+}
+
+.attribute-content {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-right: auto;
+  padding: 0 8px;
+  color: var(--attribute-text-color, var(--bs-body-color));
+}
+
+.attribute-type {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 8px;
+  color: var(--attribute-type-color, var(--bs-secondary-color));
+}
+
+/* Стили для хендлов */
+.react-flow__handle-left {
+  opacity: 0.3;
+  background: var(--handle-target-color, #ff0072) !important;
+  width: 8px !important;
+  height: 8px !important;
+  transition: opacity 0.2s !important;
+  border: 2px solid var(--bs-body-bg) !important;
+}
+
+.react-flow__handle-right {
+  opacity: 0.3;
+  background: var(--handle-source-color, #0072ff) !important;
+  width: 8px !important;
+  height: 8px !important;
+  transition: opacity 0.2s !important;
+  border: 2px solid var(--bs-body-bg) !important;
+}
+
+.attribute-row:hover .react-flow__handle-left,
+.attribute-row:hover .react-flow__handle-right {
+  opacity: 1 !important;
+}

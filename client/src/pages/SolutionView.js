@@ -104,7 +104,7 @@ const SolutionView = ({ nodes, edges, tableData, setResult, result, selectedColu
       <Row className="h-100">
         <Col md={4}>
           <Card className="h-100">
-            <Card.Header className="bg-dark text-white">
+            <Card.Header className="">
               <h5>Конструктор запроса</h5>
             </Card.Header>
             <Card.Body className="overflow-auto">
@@ -215,7 +215,7 @@ const SolutionView = ({ nodes, edges, tableData, setResult, result, selectedColu
 
         <Col md={8}>
           <Card className="h-100">
-            <Card.Header className="bg-dark text-white d-flex justify-content-between align-items-center">
+            <Card.Header className=" d-flex justify-content-between align-items-center">
               <h5>Результат</h5>
               <small>Строк: {result.length}</small>
             </Card.Header>

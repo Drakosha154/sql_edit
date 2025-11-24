@@ -48,7 +48,7 @@ const Sidebar = React.memo(({
 }, [nodes]);
 
   return (
-    <aside className="bg-dark h-100" style={{ width: '380px'}}>
+    <aside className="h-100" style={{ width: '380px'}}>
       <div className="d-flex flex-column border-bottom p-2  flex-sm-row gap-2">
         <button 
           variant="outline-primary" 

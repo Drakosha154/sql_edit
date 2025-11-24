@@ -1,0 +1,112 @@
+/* DatabaseVisualPreview.css */
+.database-preview-btn {
+  border: var(--bs-border-width) var(--bs-border-style) var(--bs-border-color);
+}
+
+.preview-modal .modal-header {
+  background-color: var(--modal-header-bg, var(--bs-dark));
+  color: var(--modal-header-color, var(--bs-light));
+  border-bottom: var(--bs-border-width) var(--bs-border-style) var(--bs-border-color);
+}
+
+.preview-modal .modal-body {
+  background-color: var(--preview-bg, var(--bs-body-bg));
+}
+
+.preview-modal .modal-footer {
+  background-color: var(--modal-footer-bg, var(--bs-body-bg));
+  border-top: var(--bs-border-width) var(--bs-border-style) var(--bs-border-color);
+}
+
+/* React Flow стили */
+.react-flow__controls {
+  background-color: var(--controls-bg, #2d3748) !important;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px var(--controls-shadow, rgba(0,0,0,0.5)) !important;
+}
+
+.react-flow__controls button {
+  background-color: var(--controls-btn-bg, #4a5568) !important;
+  border-bottom: 1px solid var(--controls-border, #718096) !important;
+  color: var(--controls-btn-color, white) !important;
+}
+
+.react-flow__controls button:hover {
+  background-color: var(--controls-btn-hover, #718096) !important;
+}
+
+.react-flow__minimap {
+  background-color: var(--minimap-bg, #2d3748) !important;
+  border: 1px solid var(--minimap-border, #4a5568) !important;
+}
+
+.react-flow__background {
+  background-color: var(--flow-bg, var(--bs-body-bg)) !important;
+}
+
+.react-flow__background-pattern-dots {
+  color: var(--background-dots, #4a5568) !important;
+}
+
+/* Легенда */
+.erd-legend {
+  background: var(--legend-bg, rgb(51, 65, 85));
+  padding: 8px 12px;
+  border-radius: 4px;
+  display: flex;
+  gap: 15px;
+  font-size: 14px;
+  color: var(--legend-color, white);
+  border: 1px solid var(--legend-border, transparent);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-1n {
+  background: var(--relation-one-to-many, #198754);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.legend-11 {
+  background: var(--relation-one-to-one, #0d6efd);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.legend-nn {
+  background: var(--relation-many-to-many, #dc3545);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Кастомные edge стили */
+.custom-edge-label {
+  background: var(--edge-label-bg, var(--bs-primary));
+  color: var(--edge-label-color, white);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: bold;
+  border: 1px solid var(--edge-label-border, transparent);
+}
+
+/* React Flow ноды */
+.react-flow__node {
+  border: var(--bs-border-width) var(--bs-border-style) var(--bs-border-color);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px var(--node-shadow, rgba(0,0,0,0.1));
+}
