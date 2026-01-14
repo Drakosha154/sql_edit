@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -278,11 +279,14 @@ func GetSolutionTaskProfile(c *gin.Context) {
 
 // SolutionResult представляет результат проверки
 type SolutionResult struct {
-	Success        bool                     `json:"success"`
-	Message        string                   `json:"message"`
-	UserResult     []map[string]interface{} `json:"user_result"`
-	ExpectedResult []map[string]interface{} `json:"expected_result"`
-	ExecutionTime  time.Duration            `json:"execution_time"`
+	Success           bool                     `json:"success"`
+	Message           string                   `json:"message"`
+	UserResult        []map[string]interface{} `json:"user_result"`
+	ExpectedResult    []map[string]interface{} `json:"expected_result"`
+	ExecutionTime     time.Duration            `json:"execution_time"`
+	IsSuspicious      bool                     `json:"is_suspicious"`       // Добавить это поле
+	SuspiciousReasons []string                 `json:"suspicious_reasons"`  // Добавить это поле
+	MetadataStats     map[string]interface{}   `json:"metadata_stats"`      // Добавить это поле
 }
 
 // CheckSolutionWithSchema обработчик с использованием схем
@@ -290,8 +294,9 @@ func CheckSolutionWithSchema(c *gin.Context) {
 	startTime := time.Now()
 
 	var request struct {
-		SolutionSQL string `json:"solution_sql"`
-		TaskID      int    `json:"task_id"`
+		SolutionSQL string                 `json:"solution_sql"`
+		TaskID      int                    `json:"task_id"`
+		Metadata    map[string]interface{} `json:"metadata"`
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -316,8 +321,49 @@ func CheckSolutionWithSchema(c *gin.Context) {
 
 	var db_task models.Database_lists
 	if err := database.DB.Where("id = ?", task.ID_database).First(&db_task).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Задание не найдено"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "База данных для задания не найдена"})
 		return
+	}
+
+	// Проверяем честность решения на основе метаданных
+	isSuspicious := false
+	var suspiciousReasons []string
+	var metadataStats = make(map[string]interface{})
+	
+	if request.Metadata != nil {
+		// Извлекаем метаданные
+		if copyCount, ok := request.Metadata["copyCount"].(float64); ok && copyCount > 0 {
+			isSuspicious = true
+			suspiciousReasons = append(suspiciousReasons, fmt.Sprintf("Обнаружены попытки копирования: %.0f", copyCount))
+		}
+		
+		if pasteCount, ok := request.Metadata["pasteCount"].(float64); ok && pasteCount > 0 {
+			isSuspicious = true
+			suspiciousReasons = append(suspiciousReasons, fmt.Sprintf("Обнаружены попытки вставки: %.0f", pasteCount))
+		}
+		
+		if isWindowActive, ok := request.Metadata["isWindowActive"].(bool); ok && !isWindowActive {
+			if timeSpent, ok := request.Metadata["timeSpent"].(float64); ok && timeSpent > 30 {
+				isSuspicious = true
+				suspiciousReasons = append(suspiciousReasons, 
+					fmt.Sprintf("Окно было неактивно %.0f секунд", timeSpent))
+			}
+		}
+		
+		if tabSwitches, ok := request.Metadata["tabSwitches"].(float64); ok && tabSwitches > 5 {
+			isSuspicious = true
+			suspiciousReasons = append(suspiciousReasons, 
+				fmt.Sprintf("Слишком много переключений вкладок: %.0f", tabSwitches))
+		}
+		
+		// Сохраняем статистику для ответа
+		metadataStats = map[string]interface{}{
+			"copyCount":   request.Metadata["copyCount"],
+			"pasteCount":  request.Metadata["pasteCount"],
+			"timeSpent":   request.Metadata["timeSpent"],
+			"tabSwitches": request.Metadata["tabSwitches"],
+			"isWindowActive": request.Metadata["isWindowActive"],
+		}
 	}
 
 	// Создаем уникальное имя схемы
@@ -328,22 +374,44 @@ func CheckSolutionWithSchema(c *gin.Context) {
 	if err != nil {
 		// Логируем ошибку для отладки
 		log.Printf("Ошибка выполнения решения: %v", err)
+		log.Printf("Пользователь: %d, Задание: %d", userID, request.TaskID)
+		
+		// Сохраняем неудачную попытку в лог подозрительной активности
+		if len(suspiciousReasons) > 0 {
+			saveSuspiciousActivity(userID, request.TaskID, request.SolutionSQL, suspiciousReasons)
+		}
 
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Ошибка выполнения решения",
 			"details": err.Error(),
+			"is_suspicious": isSuspicious,
+			"suspicious_reasons": suspiciousReasons,
 		})
 		return
 	}
 
 	result.ExecutionTime = time.Since(startTime)
+	
+	// Добавляем метаданные к результату
+	result.IsSuspicious = isSuspicious
+	result.SuspiciousReasons = suspiciousReasons
+	result.MetadataStats = metadataStats
+	
+	// Формируем сообщение с учетом честности решения
+	result.Message = getSolutionMessage(result.Success, isSuspicious)
 
 	// Сохраняем результат ПЕРЕД отправкой ответа клиенту
 	db := models.Solutions_list{
 		UserID:      userID,
 		TaskID:      request.TaskID,
 		DecisionSQL: request.SolutionSQL,
-		IsCorrect:   result.Success, // Используем реальный результат проверки
+		IsCorrect:   result.Success,
+		// Сохраняем метаданные как JSON
+		Metadata:    convertMetadataToJSON(request.Metadata),
+		// Сохраняем IP адрес пользователя
+		IPAddress:   c.ClientIP(),
+		// Сохраняем User-Agent
+		UserAgent:   c.Request.UserAgent(),
 	}
 
 	var existingTask models.Solutions_list
@@ -352,8 +420,8 @@ func CheckSolutionWithSchema(c *gin.Context) {
 	if erro != nil {
 		// Запись не существует - создаем новую
 		if err := database.DB.Create(&db).Error; err != nil {
-			log.Printf("Ошибка создания записи задачи: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save task"})
+			log.Printf("Ошибка создания записи решения: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save solution"})
 			return
 		}
 	} else {
@@ -378,7 +446,65 @@ func CheckSolutionWithSchema(c *gin.Context) {
 		}
 	}
 
+	// Сохраняем в лог активности, если решение подозрительное
+	if isSuspicious {
+		saveSuspiciousActivity(userID, request.TaskID, request.SolutionSQL, suspiciousReasons)
+	}
+
+	// Логируем проверку решения
+	logSolutionCheck(userID, request.TaskID, result.Success, isSuspicious, result.ExecutionTime)
+
 	c.JSON(http.StatusOK, result)
+}
+
+// getSolutionMessage формирует сообщение с учетом честности решения
+func getSolutionMessage(isCorrect, isSuspicious bool) string {
+	if !isCorrect {
+		return "Решение содержит ошибки. Проверьте синтаксис SQL и логику запроса."
+	}
+	
+	if isSuspicious {
+		return "Решение верное, но обнаружена подозрительная активность. Решение отправлено на дополнительную проверку."
+	}
+	
+	return "Решение верное! Отличная работа!"
+}
+
+// convertMetadataToJSON конвертирует метаданные в JSON для хранения в БД
+func convertMetadataToJSON(metadata map[string]interface{}) string {
+	if metadata == nil {
+		return "{}"
+	}
+	
+	jsonData, err := json.Marshal(metadata)
+	if err != nil {
+		log.Printf("Ошибка конвертации метаданных: %v", err)
+		return "{}"
+	}
+	
+	return string(jsonData)
+}
+
+// saveSuspiciousActivity сохраняет подозрительную активность в лог
+func saveSuspiciousActivity(userID uint, taskID int, solutionSQL string, reasons []string) {
+	suspiciousLog := models.SuspiciousActivity{
+		UserID:      userID,
+		TaskID:      taskID,
+		SolutionSQL: solutionSQL,
+		Reasons:     strings.Join(reasons, "; "),
+		DetectedAt:  time.Now(),
+	}
+	
+	if err := database.DB.Create(&suspiciousLog).Error; err != nil {
+		log.Printf("Ошибка сохранения лога подозрительной активности: %v", err)
+	}
+}
+
+// logSolutionCheck логирует проверку решения
+func logSolutionCheck(userID uint, taskID int, isCorrect, isSuspicious bool, execTime time.Duration) {
+	logMsg := fmt.Sprintf("Проверка решения: UserID=%d, TaskID=%d, Correct=%v, Suspicious=%v, Time=%v",
+		userID, taskID, isCorrect, isSuspicious, execTime)
+	log.Println(logMsg)
 }
 
 // generateSchemaName создает уникальное имя схемы
