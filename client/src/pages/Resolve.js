@@ -638,13 +638,6 @@ export default function Resolve() {
                     </div>
                   </div>
                   
-                  {hasExistingSolution && (
-                    <Alert variant="info" className="mb-3">
-                      <i className="bi bi-info-circle me-2"></i>
-                      У вас есть сохраненное решение этой задачи. Вы можете отредактировать его или отправить на проверку заново.
-                    </Alert>
-                  )}
-                  
                   <Alert variant="info" className="mb-3">
                     <i className="bi bi-info-circle me-2"></i>
                     <strong>Система контроля активирована:</strong> копирование и вставка SQL кода запрещены.

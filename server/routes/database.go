@@ -574,6 +574,8 @@ func executeInSchema(schemaName, schemaSQL, dataSQL, userSQL, expectedCSV string
 	}, nil
 }
 
+
+
 // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 
 // createSchemaConnection создает новое соединение для работы со схемой

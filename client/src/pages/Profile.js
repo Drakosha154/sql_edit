@@ -12,7 +12,8 @@ import {
   Table, 
   Badge, 
   Button,
-  Modal
+  Modal,
+  Accordion
 } from 'react-bootstrap';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL
@@ -29,6 +30,8 @@ export default function Profile() {
     const [showStatsModal, setShowStatsModal] = useState(false);
     const [taskSolutions, setTaskSolutions] = useState([]);
     const [selectedTask, setSelectedTask] = useState(null);
+    const [showLogModal, setShowLogModal] = useState(false);
+    const [selectedSolution, setSelectedSolution] = useState(null);
 
     useEffect(() => {
         fetchMyProfile();
@@ -54,7 +57,6 @@ export default function Profile() {
             fetchMyTask(data.user);
             setStats(data.stats);
             
-            // Сохраняем пользователя в localStorage для навбара
             localStorage.setItem('user', JSON.stringify(data.user));
         } catch (err) {
             setError(err.message);
@@ -88,7 +90,6 @@ export default function Profile() {
             });
             const data = await response.json();
             setTasks(data.tasks);
-
         } catch (err) {
             console.error('Failed to fetch task', err);
         }
@@ -118,6 +119,8 @@ export default function Profile() {
                 }
             });
             const data = await response.json();
+
+            console.log('Task solutions data:', data);
             setTaskSolutions(data.solutions || []);
             setSelectedTask(taskId);
             setShowStatsModal(true);
@@ -129,7 +132,6 @@ export default function Profile() {
 
     const handleDelete = async (dbId) => {
         try {
-            // Подтверждение перед удалением
             if (!window.confirm('Вы уверены, что хотите удалить эту базу данных?')) {
                 return;
             }
@@ -145,12 +147,19 @@ export default function Profile() {
                 throw new Error('Ошибка при удалении базы данных');
             }
 
-            // Обновляем список баз данных после удаления
             setDatabases(databases.filter(db => db.ID !== dbId));
             alert('База данных успешно удалена');
         } catch (error) {
             console.error("Ошибка удаления:", error);
             alert("Ошибка удаления: " + error.message);
+        }
+    };
+
+    // Функция для открытия модального окна с логами списывания
+    const showSuspiciousLogs = (solution) => {
+        if (solution && solution.has_suspicious && solution.suspicious_logs && solution.suspicious_logs.length > 0) {
+            setSelectedSolution(solution);
+            setShowLogModal(true);
         }
     };
 
@@ -164,6 +173,12 @@ export default function Profile() {
 
     const handleResolve = async (dbId) => {
         navigate(`/Resolve/${dbId}`);
+    };
+
+    // Функция для подсчета количества логов списывания в строке
+    const getSuspiciousLogsCount = (solution) => {
+        if (!solution.has_suspicious || !solution.suspicious_logs) return 0;
+        return solution.suspicious_logs.length;
     };
 
     if (loading) {
@@ -236,7 +251,6 @@ export default function Profile() {
                                     <div className="btn border ms-3">
                                         <NavLink to="/create_database" className="nav-link">Создать базу данных</NavLink>
                                     </div>
-                                    {console.log(databases)}
                                     {databases.length > 0 ? (
                                         <div className="list-group m-2">
                                             {databases.map(db => (
@@ -344,40 +358,194 @@ export default function Profile() {
                     </Tabs>
 
                     {/* Модальное окно для статистики решений */}
-                    <Modal show={showStatsModal} onHide={() => setShowStatsModal(false)} size="lg">
+                    <Modal show={showStatsModal} onHide={() => setShowStatsModal(false)} size="xl">
                         <Modal.Header closeButton>
-                            <Modal.Title>Статистика решений задания</Modal.Title>
+                            <Modal.Title>
+                                Статистика решений задания
+                                {selectedTask && ` (ID: ${selectedTask})`}
+                            </Modal.Title>
                         </Modal.Header>
                         <Modal.Body>
                             {taskSolutions.length > 0 ? (
-                                <Table striped bordered>
-                                    <thead>
-                                        <tr>
-                                            <th>Пользователь</th>
-                                            <th>Статус</th>
-                                            <th>Дата решения</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {taskSolutions.map((solution, index) => (
-                                            <tr key={index}>
-                                                <td>{solution.username}</td>
-                                                <td>
-                                                    <Badge bg={solution.is_correct ? "success" : "danger"}>
-                                                        {solution.is_correct ? "Верно" : "Неверно"}
-                                                    </Badge>
-                                                </td>
-                                                <td>{new Date(solution.created_at).toLocaleString()}</td>
+                                <>
+                                    <div className="mb-3">
+                                        <Badge bg="primary" className="me-2">
+                                            Всего решений: {taskSolutions.length}
+                                        </Badge>
+                                        <Badge bg="success" className="me-2">
+                                            Верных: {taskSolutions.filter(s => s.is_correct).length}
+                                        </Badge>
+                                        <Badge bg="warning" className="me-2">
+                                            Подозрительных пользователей: {taskSolutions.filter(s => s.has_suspicious).length}
+                                        </Badge>
+                                        <Badge bg="danger" className="me-2">
+                                            Всего логов списывания: {taskSolutions.reduce((total, s) => total + getSuspiciousLogsCount(s), 0)}
+                                        </Badge>
+                                    </div>
+                                    
+                                    <Table striped bordered hover>
+                                        <thead>
+                                            <tr>
+                                                <th>Пользователь</th>
+                                                <th>Статус</th>
+                                                <th>Дата решения</th>
+                                                <th>Логов списывания</th>
+                                                <th>Детали</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </Table>
+                                        </thead>
+                                        <tbody>
+                                            {taskSolutions.map((solution, index) => (
+                                                <tr key={index}>
+                                                    <td>{solution.username}</td>
+                                                    <td>
+                                                        <Badge bg={solution.is_correct ? "success" : "danger"}>
+                                                            {solution.is_correct ? "Верно" : "Неверно"}
+                                                        </Badge>
+                                                        {solution.has_suspicious && (
+                                                            <Badge bg="warning" className="ms-1">
+                                                                {getSuspiciousLogsCount(solution)} нарушений
+                                                            </Badge>
+                                                        )}
+                                                    </td>
+                                                    <td>{new Date(solution.created_at).toLocaleString()}</td>
+                                                    <td>
+                                                        {solution.has_suspicious ? (
+                                                            <Badge bg={solution.suspicious_logs.length > 1 ? "danger" : "warning"}>
+                                                                {getSuspiciousLogsCount(solution)} логов
+                                                            </Badge>
+                                                        ) : (
+                                                            <small className="text-muted">Нет</small>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        {solution.has_suspicious ? (
+                                                            <Button 
+                                                                variant="outline-warning" 
+                                                                size="sm"
+                                                                onClick={() => showSuspiciousLogs(solution)}
+                                                            >
+                                                                Посмотреть все логи ({getSuspiciousLogsCount(solution)})
+                                                            </Button>
+                                                        ) : (
+                                                            <small className="text-muted">Нет подозрительной активности</small>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </Table>
+                                </>
                             ) : (
                                 <p className="text-center">Пока нет решений этой задачи</p>
                             )}
                         </Modal.Body>
                         <Modal.Footer>
                             <Button variant="secondary" onClick={() => setShowStatsModal(false)}>
+                                Закрыть
+                            </Button>
+                        </Modal.Footer>
+                    </Modal>
+
+                    {/* Модальное окно для деталей списывания */}
+                    <Modal show={showLogModal} onHide={() => setShowLogModal(false)} size="xl">
+                        <Modal.Header closeButton>
+                            <Modal.Title>
+                                Логи списывания пользователя
+                                {selectedSolution && (
+                                    <span className="ms-2">
+                                        {selectedSolution.username}
+                                        <Badge bg="warning" className="ms-2">
+                                            {getSuspiciousLogsCount(selectedSolution)} логов
+                                        </Badge>
+                                    </span>
+                                )}
+                            </Modal.Title>
+                        </Modal.Header>
+                        <Modal.Body>
+                            {selectedSolution && selectedSolution.suspicious_logs && selectedSolution.suspicious_logs.length > 0 ? (
+                                <>
+                                    <div className="mb-4">
+                                        <h6>Информация о решении:</h6>
+                                        <Row>
+                                            <Col md={6}>
+                                                <p className="mb-1">
+                                                    <strong>Пользователь:</strong> {selectedSolution.username}
+                                                </p>
+                                                <p className="mb-1">
+                                                    <strong>Статус решения:</strong> 
+                                                    <Badge bg={selectedSolution.is_correct ? "success" : "danger"} className="ms-2">
+                                                        {selectedSolution.is_correct ? "Верно" : "Неверно"}
+                                                    </Badge>
+                                                </p>
+                                            </Col>
+                                            <Col md={6}>
+                                                <p className="mb-1">
+                                                    <strong>Дата решения:</strong> {new Date(selectedSolution.created_at).toLocaleString()}
+                                                </p>
+                                                <p className="mb-1">
+                                                    <strong>SQL запрос пользователя:</strong>
+                                                </p>
+                                            </Col>
+                                        </Row>
+                                        <div className="mt-2 bg-dark text-light p-3 rounded">
+                                            <pre className="mb-0" style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>
+                                                {selectedSolution.decision_sql || "SQL запрос отсутствует"}
+                                            </pre>
+                                        </div>
+                                    </div>
+
+                                    <h6 className="mb-3">Все обнаруженные случаи списывания:</h6>
+                                    <Accordion defaultActiveKey="0">
+                                        {selectedSolution.suspicious_logs.map((log, index) => (
+                                            <Accordion.Item key={index} eventKey={index.toString()}>
+                                                <Accordion.Header>
+                                                    <div className="d-flex justify-content-between w-100">
+                                                        <span>
+                                                            Лог #{index + 1} - {new Date(log.detected_at).toLocaleString()}
+                                                        </span>
+                                                    </div>
+                                                </Accordion.Header>
+                                                <Accordion.Body>
+                                                    <Row>
+                                                        <Col md={6}>
+                                                            <div className="mb-3">
+                                                                <h6>Причины списывания:</h6>
+                                                                <div className="alert alert-warning mb-0">
+                                                                    {log.reasons}
+                                                                </div>
+                                                            </div>
+                                                        </Col>
+                                                        <Col md={6}>
+                                                            <div className="mb-3">
+                                                                <h6>Техническая информация:</h6>
+                                                                <p className="mb-1">
+                                                                    <strong>Время обнаружения:</strong> {new Date(log.detected_at).toLocaleString()}
+                                                                </p>
+                                                            </div>
+                                                        </Col>
+                                                    </Row>
+
+                                                    {log.solution_sql && (
+                                                        <div className="mb-3">
+                                                            <h6>SQL запрос из лога:</h6>
+                                                            <div className="bg-secondary text-light p-3 rounded">
+                                                                <pre className="mb-0" style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>
+                                                                    {log.solution_sql}
+                                                                </pre>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </Accordion.Body>
+                                            </Accordion.Item>
+                                        ))}
+                                    </Accordion>
+                                </>
+                            ) : (
+                                <p className="text-center">Нет данных о списывании</p>
+                            )}
+                        </Modal.Body>
+                        <Modal.Footer>
+                            <Button variant="secondary" onClick={() => setShowLogModal(false)}>
                                 Закрыть
                             </Button>
                         </Modal.Footer>

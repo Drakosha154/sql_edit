@@ -82,6 +82,9 @@ func main() {
 		authGroup.GET("/users/:id/solutions", routes.GetUserSolutions)
 		authGroup.GET("/tasks/:id/solutions", routes.GetTaskSolutions)
 
+		// Меню
+		authGroup.GET("/users/active", routes.GetUserStats)
+
 		adminGroup := authGroup.Group("/admin")
     	adminGroup.Use(routes.AdminMiddleware())
     	{
