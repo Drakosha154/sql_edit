@@ -33,10 +33,8 @@ function jsonToCsv(data) {
   return csv;
 }
 
-export default function SaveDatabaseButton({ taskDescription, result, setCsvDecision }) {
+export default function TaskSaveButton({ taskDescription, result, setCsvDecision, databaseId, sqlQuery }) {
   const [show, setShow] = useState(false);
-  const [sqlCode, setSqlCode] = useState('');
-  const [sqlCodeInsert, setsqlCodeInsert] = useState('');
   const [name, setName] = useState('');
   const navigate = useNavigate();
 
@@ -49,7 +47,7 @@ export default function SaveDatabaseButton({ taskDescription, result, setCsvDeci
       //const currentSqlInsert = generateDataInsertSQL(nodes, tableData);
       const currentScv = jsonToCsv(result);
 
-      const response = await fetch(`${API_BASE_URL}/api/databases`, {
+      const response = await fetch(`${API_BASE_URL}/api/tasks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -57,19 +55,18 @@ export default function SaveDatabaseButton({ taskDescription, result, setCsvDeci
         },
         body: JSON.stringify({
           Name: name,
-          //Schema: currentSqlCode,
-          //SchemaInsert: currentSqlInsert,
           Task: taskDescription,
-          Decision: currentScv
+          Decision: currentScv,
+          Id_database: databaseId,
+          SqlQuery: sqlQuery,
         })
       });
 
       if (!response.ok) throw new Error('Ошибка сохранения');
-      //setSqlCode(currentSqlCode);
-      //setsqlCodeInsert(currentSqlInsert);
       setCsvDecision(currentScv);
       setShow(false);
-      alert('База данных успешно создана!');
+      alert('Зданание успешно создано!');
+      navigate('/profile')
     } catch (error) {
       alert(error.message);
     }
@@ -82,7 +79,7 @@ export default function SaveDatabaseButton({ taskDescription, result, setCsvDeci
         //const currentSqlInsert = generateDataInsertSQL(nodes, tableData);
         const currentScv = jsonToCsv(result);
 
-        const response = await fetch(`${API_BASE_URL}/api/databases/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/tasks/${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -90,19 +87,17 @@ export default function SaveDatabaseButton({ taskDescription, result, setCsvDeci
         },
         body: JSON.stringify({
           Id: id,
-          //Schema: currentSqlCode ,
-          //SchemaInsert: currentSqlInsert,
           Task: taskDescription,
           Decision: currentScv,
+          SqlQuery: sqlQuery,
         })
       });
 
       if (!response.ok) throw new Error('Ошибка сохранения');
-      //setSqlCode(currentSqlCode);
-      //setsqlCodeInsert(currentSqlInsert);
       setCsvDecision(currentScv);
       setShow(false);
-      alert('База данных успешно сохранена!');
+      alert('Задание успешно сохранено!');
+      console.log('1111')
       navigate('/profile')
 
       } else {
@@ -122,16 +117,16 @@ export default function SaveDatabaseButton({ taskDescription, result, setCsvDeci
 
       <Modal show={show} onHide={() => setShow(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>Создать новую базу данных</Modal.Title>
+          <Modal.Title>Создать новую задачу</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form.Group>
-            <Form.Label>Название базы данных</Form.Label>
+            <Form.Label>Название задания</Form.Label>
             <Form.Control
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Моя новая база"
+              placeholder="Моё новое задание"
             />
           </Form.Group>
         </Modal.Body>

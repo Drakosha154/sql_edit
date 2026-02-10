@@ -6,17 +6,17 @@ export function parseSQL(sql) {
   const cleanedSQL = sql.replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '').trim();
   
   // Упрощенные регулярные выражения
-  const createTableRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\(([\s\S]+?)\)\s*;?/gi;
+  const createTableRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\(((?:[^()]|\([^()]*\))*)\)\s*;?/gi;
   const columnRegex = /(\w+)\s+([\w\(\)]+)(?:\s+(.*))?/i;
-  const referenceRegex = /REFERENCES\s+(\w+)\s*\((\w+)\)/i;
-  const constraintRegex = /CONSTRAINT\s+\w+\s+FOREIGN\s+KEY\s*\(([^)]+)\)\s*REFERENCES\s+(\w+)\s*\(([^)]+)\)/i;
+  // Исправлено: учитываем возможные опции после REFERENCES
+  const referenceRegex = /REFERENCES\s+(\w+)\s*\((\w+)\)(?:\s+(?:ON\s+(?:DELETE|UPDATE)\s+(?:CASCADE|SET NULL|SET DEFAULT|RESTRICT|NO ACTION)))*/i;
+  const constraintRegex = /CONSTRAINT\s+\w+\s+FOREIGN\s+KEY\s*\(([^)]+)\)\s*REFERENCES\s+(\w+)\s*\(([^)]+)\)(?:\s+(?:ON\s+(?:DELETE|UPDATE)\s+(?:CASCADE|SET NULL|SET DEFAULT|RESTRICT|NO ACTION)))*/i;
   
   // Парсим CREATE TABLE
   let tableMatch;
   while ((tableMatch = createTableRegex.exec(cleanedSQL)) !== null) {
     const tableName = tableMatch[1];
     const columnsDef = tableMatch[2];
-    
     const columns = [];
     const lines = columnsDef.split('\n')
       .map(line => line.trim())
@@ -42,18 +42,19 @@ export function parseSQL(sql) {
         }
         continue;
       }
-      
       const colMatch = columnRegex.exec(line);
       if (colMatch) {
         const colName = colMatch[1];
         const colType = colMatch[2];
         const constraints = colMatch[3] || '';
+        //console.log(constraints)
         
         const isPrimary = constraints.includes('PRIMARY KEY');
         const isNullable = !constraints.includes('NOT NULL');
         
-        // Ищем REFERENCES
+        // Ищем REFERENCES (исправленный вариант)
         const refMatch = referenceRegex.exec(constraints);
+        //console.log(refMatch)
         if (refMatch) {
           foreignKeys.push({
             fromTable: tableName,
@@ -78,8 +79,9 @@ export function parseSQL(sql) {
     });
   }
   
-  // Парсим ALTER TABLE ADD CONSTRAINT
-  const alterTableRegex = /ALTER\s+TABLE\s+(\w+)\s+ADD\s+(?:CONSTRAINT\s+\w+\s+)?FOREIGN\s+KEY\s*\(([^)]+)\)\s*REFERENCES\s+(\w+)\s*\(([^)]+)\)/gi;
+    // Парсим ALTER TABLE ADD CONSTRAINT (тоже нужно исправить)
+  const alterTableRegex = /ALTER\s+TABLE\s+(\w+)\s+ADD\s+(?:CONSTRAINT\s+\w+\s+)?FOREIGN\s+KEY\s*\(([^)]+)\)\s*REFERENCES\s+(\w+)\s*\(([^)]+)\)(?:\s+(?:ON\s+(?:DELETE|UPDATE)\s+(?:CASCADE|SET NULL|SET DEFAULT|RESTRICT|NO ACTION)))*/gi;
+  
   let alterMatch;
   while ((alterMatch = alterTableRegex.exec(cleanedSQL)) !== null) {
     const fromTable = alterMatch[1];

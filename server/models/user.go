@@ -42,6 +42,7 @@ type Tasks_list struct {
 	Database_decision string
 	CreatedAt         time.Time
 	ID_database       uint
+	SqlQuery		  string
 
 	// Связи
 	User User `gorm:"foreignKey:ID_creator"`

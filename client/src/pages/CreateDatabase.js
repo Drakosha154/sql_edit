@@ -25,7 +25,7 @@ import { Tab, Nav, Row, Col } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import "bootstrap-icons/font/bootstrap-icons.css";
 import './ERDEditor.css';
-
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import EntityNode from '../components/EntityNode';
 import CustomEdge from '../components/CustomEdge';
@@ -64,6 +64,7 @@ const createEntityNode = (entityName, attributes, position) => ({
 const API_BASE_URL = process.env.REACT_APP_API_URL
 
 export default function CreateDatabase() {
+  const navigate = useNavigate();
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [activeNodeId, setActiveNodeId] = useState(null);
@@ -346,7 +347,7 @@ CREATE TABLE ${junctionTableName} (
 const getSqlType = (type) => {
   const typeMap = {
     'string': 'TEXT',
-    'integer': 'INTEGER',
+    'INTEGER': 'INTEGER',
     'boolean': 'BOOLEAN',
     'numeric': 'NUMERIC',
     'bigint': 'BIGINT',
@@ -436,7 +437,7 @@ const isBooleanType = (type) => {
 
 const isNumericType = (type) => {
   if (!type) return false;
-  const numericTypes = ['integer', 'int', 'bigint', 'smallint', 'numeric', 'decimal', 'real', 'double', 'float'];
+  const numericTypes = ['INTEGER', 'INT', 'BIGINT', 'SMALLINT', 'NUMERIC', 'DECIMAL', 'REAL', 'DOUBLE', 'FLOAT'];
   return numericTypes.includes(type.toLowerCase());
 };
 

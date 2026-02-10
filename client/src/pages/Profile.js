@@ -130,6 +130,31 @@ export default function Profile() {
         }
     };
 
+    const handleDeleteTask = async (taskId) => {
+        try {
+            if (!window.confirm('Вы уверены, что хотите удалить это задание?')) {
+                return;
+            }
+
+            const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Ошибка при удалении здания');
+            }
+
+            setTasks(tasks.filter(task => task.ID !== taskId));
+            alert('Задание успешно удалено');
+        } catch (error) {
+            console.error("Ошибка удаления:", error);
+            alert("Ошибка удаления: " + error.message);
+        }
+    };
+
     const handleDelete = async (dbId) => {
         try {
             if (!window.confirm('Вы уверены, что хотите удалить эту базу данных?')) {
@@ -299,7 +324,7 @@ export default function Profile() {
                                                     <button className="btn btn-sm btn-outline-info me-2" onClick={() => fetchTaskSolutions(task.ID)}>
                                                         Статистика решений
                                                     </button>
-                                                    <button className="btn btn-sm btn-outline-danger me-2" onClick={() => handleDelete(task.ID)}>
+                                                    <button className="btn btn-sm btn-outline-danger me-2" onClick={() => handleDeleteTask(task.ID)}>
                                                         Удалить
                                                     </button>
                                                 </div>

@@ -70,6 +70,7 @@ export default function SaveDatabaseButton({ nodes, tableData, generateSQL, gene
       //setCsvDecision(currentScv);
       setShow(false);
       alert('База данных успешно создана!');
+      navigate('/profile')
     } catch (error) {
       alert(error.message);
     }

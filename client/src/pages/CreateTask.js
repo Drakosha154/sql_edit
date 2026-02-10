@@ -21,6 +21,7 @@ import {
   Card,
   Badge
 } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 import { useParams } from 'react-router-dom';
 import { Tab, Nav, Row, Col } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -65,6 +66,7 @@ const createEntityNode = (entityName, attributes, position) => ({
 const API_BASE_URL = process.env.REACT_APP_API_URL
 
 export default function CreateTask() {
+  const navigate = useNavigate();
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [showDatabaseModal, setShowDatabaseModal] = useState(false);
@@ -85,6 +87,8 @@ export default function CreateTask() {
   const [loading, setLoading] = useState(false);
   const [userDatabases, setUserDatabases] = useState([]);
   const [databaseName, setDatabaseName] = useState([]);
+  const [databaseId, setDatabaseId] = useState('');
+  const [sqlQuery, setSqlQuery] = useState('');
 
 
   const { id } = useParams();
@@ -111,7 +115,9 @@ export default function CreateTask() {
               setDatabaseName(data.nameDatabase);
               handleImportSQL(data.create);
               handleImportSQLInsert(data.insert);
+              setSelectedDatabase(data.nameDatabase);
               setTaskDescription(data.description);
+              setSqlQuery(data.sqlQuery);
 
               const resultData = csvToJson(data.result);
               setResult(resultData)
@@ -198,10 +204,10 @@ const fetchUserDatabases = async () => {
 };
 
 const handleDatabaseSelect = (database) => {
-  setSelectedDatabase(database);
+  setDatabaseId(database.id);
+  setSelectedDatabase(database.name);
   setDatabaseName(database.name);
   fetchSelectedDatabase(database);
-  console.log(database)
   // Здесь можно добавить загрузку схемы выбранной базы данных
   //loadDatabaseSchema(database.id);
   
@@ -772,7 +778,6 @@ const parseInsertSQL = (sql) => {
       const columns = match[2].split(',').map(c => c.trim().replace(/["`]/g, ''));
       const valuesPart = match[3].trim();
       
-      console.log(`Найден INSERT в таблицу ${tableName}, колонки:`, columns);
       
       if (!result[tableName]) {
         result[tableName] = [];
@@ -780,7 +785,6 @@ const parseInsertSQL = (sql) => {
       
       // Парсим значения - ищем все группы в скобках
       const valueGroups = valuesPart.match(/\(([^)]+)\)/g) || [];
-      console.log(`Найдено групп значений: ${valueGroups.length}`);
       
       valueGroups.forEach((valuesStr, groupIndex) => {
         // Убираем скобки и разбиваем по запятым
@@ -814,9 +818,6 @@ const parseInsertSQL = (sql) => {
         }
       });
     }
-    
-    console.log(`Всего обработано INSERT запросов: ${queryCount}`);
-    console.log(`Итоговые данные:`, result);
     
     return result;
   } catch (error) {
@@ -854,12 +855,15 @@ const parseInsertSQL = (sql) => {
     <div class='erd-container d-flex flex-column vh-100'>
     <div class='p-2 border-bottom d-flex'>
     <TaskSaveButton
+      databaseId={databaseId}
       taskDescription={taskDescription}
       result={result}
       setCsvDecision={setCsvDecision}
+      sqlQuery={sqlQuery}
     />
+    {console.log(selectedDatabase)}
     <div class="ms-3 p-2 border rounded">
-      Выбрана база данных: {selectedDatabase ? selectedDatabase.name : 'не выбрана'}
+      Выбрана база данных: {selectedDatabase ? selectedDatabase : 'не выбрана'}
     </div>
     </div>
     <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
@@ -889,6 +893,8 @@ const parseInsertSQL = (sql) => {
             result={result}
             setSelectedColumns={setSelectedColumns}
             selectedColumns={selectedColumns}
+            sqlQuery={sqlQuery}
+            setSqlQuery={setSqlQuery}
           />
         </Tab.Pane>
 

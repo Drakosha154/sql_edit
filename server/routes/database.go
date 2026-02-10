@@ -105,6 +105,40 @@ func GetDatabasesByID(c *gin.Context) {
 	})
 }
 
+func SaveTask(c *gin.Context) {
+
+	userID := c.MustGet("userID").(uint)
+
+	var taskInput struct {
+		Name         string `json:"Name"`
+		Task       	 string `json:"Task"`
+		Decision 	 string `json:"Decision"`
+		Id_database  uint   `json: "Id_database"`
+		SqlQuery 	 string `json: "SqlQuery"`
+	}
+
+	if err := c.ShouldBindJSON(&taskInput); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	task := models.Tasks_list{
+		ID_creator: userID,
+		Task_name: taskInput.Name,
+		Task_formulation: taskInput.Task,
+		Database_decision: taskInput.Decision,
+		ID_database: taskInput.Id_database,
+		SqlQuery: taskInput.SqlQuery,
+	}
+
+		if err := database.DB.Create(&task).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save database"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Database saved"})
+}
+
 func GetTasksByID(c *gin.Context) {
 
 	idParam := c.Param("id")
@@ -137,6 +171,7 @@ func GetTasksByID(c *gin.Context) {
 		"insert":       db.Database_insert_text,
 		"createdAt":    task.CreatedAt,
 		"id_database":  task.ID_database,
+		"sqlQuery":     task.SqlQuery,
 	})
 }
 
@@ -164,6 +199,34 @@ func DelDatabasesByID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Database record deleted successfully",
+		"id":      id,
+	})
+}
+
+func DelTasksByID(c *gin.Context) {
+
+	userID := c.MustGet("userID").(uint)
+
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
+		return
+	}
+
+	var task models.Tasks_list
+	if err := database.DB.Where("id = ? AND id_creator = ?", id, userID).First(&task).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+
+	if err := database.DB.Delete(&task).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task record"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Task record deleted successfully",
 		"id":      id,
 	})
 }
@@ -205,6 +268,52 @@ func UpdDatabasesByID(c *gin.Context) {
 	}
 
 	if err := database.DB.Model(&db).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update database"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Database updated successfully",
+		"id":      id,
+		"data":    updates,
+	})
+}
+
+func UpdTasksByID(c *gin.Context) {
+
+	userID := c.MustGet("userID").(uint) // Получаем ID пользователя из middleware
+
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid database ID"})
+		return
+	}
+
+	var updateData struct {
+		Task         string `json:"Task"`
+		Decision     string `json:"Decision"`
+		SqlQuery     string `json:"SqlQuery"`
+	}
+
+	if err := c.ShouldBindJSON(&updateData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	var task models.Tasks_list
+	if err := database.DB.Where("id = ? AND id_creator = ?", id, userID).First(&task).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Database not found or access denied"})
+		return
+	}
+
+	updates := models.Tasks_list{
+		Task_formulation: updateData.Task,
+		Database_decision: updateData.Decision,
+		SqlQuery: updateData.SqlQuery,
+	}
+
+	if err := database.DB.Model(&task).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update database"})
 		return
 	}

@@ -1,149 +1,155 @@
--- Создаем таблицу Product без внешних ключей
-CREATE TABLE Product (
-    maker TEXT NOT NULL,
-    model TEXT PRIMARY KEY,
-    type TEXT CHECK (type IN ('PC', 'Laptop', 'Printer'))
+-- Таблица авторов
+CREATE TABLE IF NOT EXISTS authors (
+    author_id SERIAL PRIMARY KEY,
+    full_name TEXT NOT NULL,
+    birth_year INTEGER,
+    country TEXT
 );
 
--- Создаем таблицу PC без внешнего ключа
-CREATE TABLE PC (
-    code INT PRIMARY KEY,
-    model TEXT NOT NULL,
-    speed INT NOT NULL,
-    ram INT NOT NULL,
-    hd INT NOT NULL,
-    cd TEXT NOT NULL,
-    price NUMERIC NOT NULL
+-- Таблица жанров
+CREATE TABLE IF NOT EXISTS genres (
+    genre_id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
 );
 
--- Создаем таблицу Laptop без внешнего ключа
-CREATE TABLE Laptop (
-    code INT PRIMARY KEY,
-    model TEXT NOT NULL,
-    speed INT NOT NULL,
-    ram INT NOT NULL,
-    hd INT NOT NULL,
-    price NUMERIC NOT NULL,
-    screen INT NOT NULL
+-- Таблица книг
+CREATE TABLE IF NOT EXISTS books (
+    book_id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    author_id INTEGER REFERENCES authors(author_id) ON DELETE CASCADE,
+    genre_id INTEGER REFERENCES genres(genre_id) ON DELETE SET NULL,
+    publication_year INTEGER,
+    copies_available INTEGER DEFAULT 1 CHECK (copies_available >= 0),
+    price DECIMAL CHECK (price >= 0)
 );
 
--- Создаем таблицу Printer без внешнего ключа
-CREATE TABLE Printer (
-    code INT PRIMARY KEY,
-    model TEXT NOT NULL,
-    color TEXT CHECK (color IN ('y', 'n')),
-    type TEXT CHECK (type IN ('Laser', 'Jet', 'Matrix')),
-    price NUMERIC NOT NULL
+-- Таблица читателей
+CREATE TABLE IF NOT EXISTS readers (
+    reader_id SERIAL PRIMARY KEY,
+    full_name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    registration_date DATE DEFAULT CURRENT_DATE,
+    is_active BOOLEAN DEFAULT TRUE
 );
 
--- Добавляем внешние ключи через ALTER TABLE
-ALTER TABLE PC ADD CONSTRAINT fk_pc_product
-    FOREIGN KEY (model) REFERENCES Product(model);
+-- Таблица выдачи книг (транзакции)
+CREATE TABLE IF NOT EXISTS book_loans (
+    loan_id SERIAL PRIMARY KEY,
+    book_id INTEGER NOT NULL REFERENCES books(book_id) ON DELETE CASCADE,
+    reader_id INTEGER NOT NULL REFERENCES readers(reader_id) ON DELETE CASCADE,
+    loan_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    due_date DATE NOT NULL,
+    return_date DATE,
+);
 
-ALTER TABLE Laptop ADD CONSTRAINT fk_laptop_product
-    FOREIGN KEY (model) REFERENCES Product(model);
 
-ALTER TABLE Printer ADD CONSTRAINT fk_printer_product
-    FOREIGN KEY (model) REFERENCES Product(model);
+Задания и решения
+Задача 1: Базовый SELECT и JOIN
+Описание: Выведите список всех книг с их названиями, именами авторов и годом публикации. Отсортируйте результат по году публикации (от новых к старым).
 
--- Добавляем проверочные ограничения
-ALTER TABLE Product ADD CONSTRAINT chk_product_type
-    CHECK (type IN ('PC', 'Laptop', 'Printer'));
+sql
+SELECT b.title, a.full_name AS author_name, b.publication_year
+FROM library.books b
+JOIN library.authors a ON b.author_id = a.author_id
+ORDER BY b.publication_year DESC;
+Задача 2: Фильтрация и агрегация (WHERE и COUNT)
+Описание: Найдите количество книг каждого автора, написанных в жанре 'Роман'. Выведите имя автора и количество его романов.
 
-ALTER TABLE Printer ADD CONSTRAINT chk_printer_color
-    CHECK (color IN ('y', 'n'));
+sql
+SELECT a.full_name, COUNT(b.book_id) AS novels_count
+FROM library.authors a
+JOIN library.books b ON a.author_id = b.author_id
+JOIN library.genres g ON b.genre_id = g.genre_id
+WHERE g.name = 'Роман'
+GROUP BY a.author_id, a.full_name;
+Задача 3: Работа с датами и условием (WHERE с датами, IS NULL)
+Описание: Выведите список читателей, которые взяли книги после 1 февраля 2024 года и еще не вернули их. Покажите имя читателя, название книги и дату выдачи.
 
-ALTER TABLE Printer ADD CONSTRAINT chk_printer_type
-    CHECK (type IN ('Laser', 'Jet', 'Matrix'));
+sql
+SELECT r.full_name, b.title, bl.loan_date
+FROM library.book_loans bl
+JOIN library.readers r ON bl.reader_id = r.reader_id
+JOIN library.books b ON bl.book_id = b.book_id
+WHERE bl.loan_date > '2024-02-01' AND bl.return_date IS NULL;
+Задача 4: Группировка с условием на агрегат (GROUP BY и HAVING)
+Описание: Найдите жанры, в которых средняя цена книги превышает 500 рублей. Выведите название жанра и среднюю цену, округленную до двух знаков.
 
--- Заполнение таблицы Product
-INSERT INTO Product (maker, model, type) VALUES
-('A', '1001', 'PC'),
-('A', '1002', 'PC'),
-('A', '1003', 'Laptop'),
-('A', '1004', 'Printer'),
-('B', '2001', 'PC'),
-('B', '2002', 'Laptop'),
-('B', '2003', 'Laptop'),
-('B', '2004', 'Printer'),
-('C', '3001', 'PC'),
-('C', '3002', 'PC'),
-('C', '3003', 'Laptop'),
-('C', '3004', 'Printer'),
-('D', '4001', 'PC'),
-('D', '4002', 'Laptop'),
-('D', '4003', 'Printer'),
-('E', '5001', 'PC'),
-('E', '5002', 'Laptop'),
-('E', '5003', 'Printer'),
-('F', '6001', 'PC'),
-('F', '6002', 'Laptop');
+sql
+SELECT g.name, ROUND(AVG(b.price), 2) AS avg_price
+FROM library.genres g
+JOIN library.books b ON g.genre_id = b.genre_id
+GROUP BY g.genre_id, g.name
+HAVING AVG(b.price) > 500;
+Задача 5: Подзапрос (IN)
+Описание: Выведите имена авторов, у которых нет книг в наличии (copies_available = 0).
 
--- Заполнение таблицы PC
-INSERT INTO PC (code, model, speed, ram, hd, cd, price) VALUES
-(1, '1001', 2400, 8, 500, '24x', 599.99),
-(2, '1002', 3200, 16, 1000, '48x', 899.99),
-(3, '2001', 2800, 8, 500, '24x', 649.99),
-(4, '3001', 3600, 16, 1000, '48x', 999.99),
-(5, '3002', 2400, 8, 500, '24x', 599.99),
-(6, '4001', 3200, 16, 1000, '48x', 899.99),
-(7, '5001', 2800, 8, 500, '24x', 649.99),
-(8, '6001', 3600, 32, 2000, '64x', 1299.99),
-(9, '1001', 2400, 8, 500, '24x', 599.99),
-(10, '1002', 3200, 16, 1000, '48x', 899.99),
-(11, '2001', 2800, 8, 500, '24x', 649.99),
-(12, '3001', 3600, 16, 1000, '48x', 999.99),
-(13, '3002', 2400, 8, 500, '24x', 599.99),
-(14, '4001', 3200, 16, 1000, '48x', 899.99),
-(15, '5001', 2800, 8, 500, '24x', 649.99),
-(16, '6001', 3600, 32, 2000, '64x', 1299.99),
-(17, '1001', 2400, 8, 500, '24x', 599.99),
-(18, '1002', 3200, 16, 1000, '48x', 899.99),
-(19, '2001', 2800, 8, 500, '24x', 649.99),
-(20, '3001', 3600, 16, 1000, '48x', 999.99);
+sql
+SELECT full_name
+FROM library.authors
+WHERE author_id IN (
+    SELECT DISTINCT author_id
+    FROM library.books
+    WHERE copies_available = 0
+);
+Задача 6: Оконная функция (RANK)
+Описание: Для каждого автора выведите его самую дорогую книгу. Если у автора несколько книг с одинаковой максимальной ценой, выведите их все. В выводе: автор, название книги, цена, ранг.
 
--- Заполнение таблицы Laptop
-INSERT INTO Laptop (code, model, speed, ram, hd, price, screen) VALUES
-(21, '1003', 2200, 8, 500, 799.99, 15),
-(22, '2002', 2400, 8, 500, 849.99, 14),
-(23, '2003', 2800, 16, 1000, 1199.99, 17),
-(24, '3003', 3200, 16, 1000, 1299.99, 15),
-(25, '4002', 2400, 8, 500, 899.99, 14),
-(26, '5002', 2800, 16, 1000, 1099.99, 15),
-(27, '6002', 3600, 32, 2000, 1799.99, 17),
-(28, '1003', 2200, 8, 500, 799.99, 15),
-(29, '2002', 2400, 8, 500, 849.99, 14),
-(30, '2003', 2800, 16, 1000, 1199.99, 17),
-(31, '3003', 3200, 16, 1000, 1299.99, 15),
-(32, '4002', 2400, 8, 500, 899.99, 14),
-(33, '5002', 2800, 16, 1000, 1099.99, 15),
-(34, '6002', 3600, 32, 2000, 1799.99, 17),
-(35, '1003', 2200, 8, 500, 799.99, 15),
-(36, '2002', 2400, 8, 500, 849.99, 14),
-(37, '2003', 2800, 16, 1000, 1199.99, 17),
-(38, '3003', 3200, 16, 1000, 1299.99, 15),
-(39, '4002', 2400, 8, 500, 899.99, 14),
-(40, '5002', 2800, 16, 1000, 1099.99, 15);
+sql
+WITH ranked_books AS (
+    SELECT
+        a.full_name,
+        b.title,
+        b.price,
+        RANK() OVER (PARTITION BY a.author_id ORDER BY b.price DESC) AS price_rank
+    FROM library.authors a
+    JOIN library.books b ON a.author_id = b.author_id
+)
+SELECT full_name, title, price
+FROM ranked_books
+WHERE price_rank = 1;
+Задача 7: Объединение таблиц (UNION)
+Описание: Создайте единый список всех людей, связанных с библиотекой: и авторов, и читателей. Укажите тип ('Автор' или 'Читатель') и отсортируйте по полному имени.
 
--- Заполнение таблицы Printer
-INSERT INTO Printer (code, model, color, type, price) VALUES
-(41, '1004', 'y', 'Jet', 199.99),
-(42, '2004', 'n', 'Laser', 299.99),
-(43, '3004', 'y', 'Matrix', 149.99),
-(44, '4003', 'n', 'Laser', 349.99),
-(45, '5003', 'y', 'Jet', 249.99),
-(46, '1004', 'y', 'Jet', 199.99),
-(47, '2004', 'n', 'Laser', 299.99),
-(48, '3004', 'y', 'Matrix', 149.99),
-(49, '4003', 'n', 'Laser', 349.99),
-(50, '5003', 'y', 'Jet', 249.99),
-(51, '1004', 'y', 'Jet', 199.99),
-(52, '2004', 'n', 'Laser', 299.99),
-(53, '3004', 'y', 'Matrix', 149.99),
-(54, '4003', 'n', 'Laser', 349.99),
-(55, '5003', 'y', 'Jet', 249.99),
-(56, '1004', 'y', 'Jet', 199.99),
-(57, '2004', 'n', 'Laser', 299.99),
-(58, '3004', 'y', 'Matrix', 149.99),
-(59, '4003', 'n', 'Laser', 349.99),
-(60, '5003', 'y', 'Jet', 249.99);
+sql
+SELECT full_name, 'Автор' AS person_type
+FROM library.authors
+UNION ALL
+SELECT full_name, 'Читатель'
+FROM library.readers
+ORDER BY full_name;
+Задача 8: Изменение данных (UPDATE)
+Описание: Поднимите цену на 10% для всех книг жанра 'Фэнтези', опубликованных после 1990 года.
+
+sql
+UPDATE library.books
+SET price = price * 1.10
+WHERE genre_id = (SELECT genre_id FROM library.genres WHERE name = 'Фэнтези')
+    AND publication_year > 1990;
+-- Для проверки
+SELECT * FROM library.books WHERE genre_id = 2;
+Задача 9: Удаление данных (DELETE с использованием подзапроса)
+Описание: Удалите всех неактивных читателей (is_active = FALSE), у которых нет текущих задолженностей по книгам (все книги возвращены).
+
+sql
+DELETE FROM library.readers
+WHERE is_active = FALSE
+    AND reader_id NOT IN (
+        SELECT DISTINCT reader_id
+        FROM library.book_loans
+        WHERE return_date IS NULL
+    );
+-- Для проверки
+SELECT * FROM library.readers;
+Задача 10: Сложный запрос с оконной функцией и JOIN (топ-N)
+Описание: Определите ТОП-3 авторов по общему количеству выданных их книг (учитывайте все записи в таблице book_loans). Выведите имя автора и количество выдач.
+
+sql
+SELECT
+    a.full_name AS author_name,
+    COUNT(bl.loan_id) AS total_loans
+FROM library.authors a
+JOIN library.books b ON a.author_id = b.author_id
+JOIN library.book_loans bl ON b.book_id = bl.book_id
+GROUP BY a.author_id, a.full_name
+ORDER BY total_loans DESC
+LIMIT 3;
