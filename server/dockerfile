@@ -1,0 +1,28 @@
+# Stage 1: Build
+FROM golang:1.24 AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+# Собираем приложение - УБЕДИТЕСЬ ЧТО main.go существует!
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main .
+
+# Stage 2: Run  
+FROM alpine:latest
+
+WORKDIR /app
+
+# Копируем бинарник из builder stage
+COPY --from=builder /app/main /app/
+
+# Делаем файл исполняемым
+RUN chmod +x /app/main
+
+EXPOSE 8080
+
+# Запускаем
+CMD ["/app/main"]

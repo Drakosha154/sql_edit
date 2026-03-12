@@ -242,7 +242,7 @@ export default function Profile() {
                                     
                                     <p className="text-muted mb-2">
                                         <i className="bi bi-envelope me-1"></i>
-                                        Email: {user.email}
+                                        Почта: {user.email}
                                     </p>
                                     <p className="text-muted">
                                         <i className="bi bi-calendar me-1"></i>
@@ -356,7 +356,7 @@ export default function Profile() {
                                                 {solutions.map(solution => (
                                                     <tr key={solution.id}>
                                                         <td>
-                                                            <Link to={`/task/${solution.task_id}`}>
+                                                            <Link to={`/Resolve/${solution.task_id}`}>
                                                                 {solution.task_name || `Задание #${solution.task_id}`}
                                                             </Link>
                                                         </td>

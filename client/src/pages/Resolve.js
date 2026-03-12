@@ -533,25 +533,6 @@ export default function Resolve() {
   return (
     <div className="overflow-x-hidden">
       <Container className="py-4 overflow-auto">
-        {/* Статус активности */}
-        <Alert 
-          variant={isWindowActive ? "success" : "warning"} 
-          className="mb-3 d-flex align-items-center"
-        >
-          <i className={`bi ${isWindowActive ? "bi-check-circle" : "bi-exclamation-triangle"} me-2`}></i>
-          <div>
-            <strong>Статус:</strong> {isWindowActive ? '✅ Активен' : '⚠️ Неактивен'}
-            {!isWindowActive && ` (${inactiveTime} сек без активности)`}
-          </div>
-          <div className="ms-auto">
-            <small className="text-muted">
-              <i className="bi bi-clipboard me-1"></i>Копирования: {copyCount} |
-              <i className="bi bi-clipboard-plus ms-2 me-1"></i>Вставки: {pasteCount} |
-              <i className="bi bi-window-dock ms-2 me-1"></i>Смен вкладок: {tabSwitches}
-            </small>
-          </div>
-        </Alert>
-
         <Row>
           <Col>
             <Card>
@@ -562,11 +543,6 @@ export default function Resolve() {
                   {hasExistingSolution && (
                     <Badge bg="info" className="ms-2">
                       <i className="bi bi-save me-1"></i> Есть сохраненное решение
-                    </Badge>
-                  )}
-                  {(!isWindowActive || copyCount > 0 || pasteCount > 0) && (
-                    <Badge bg="warning" className="ms-2">
-                      <i className="bi bi-shield-exclamation"></i> Контроль активирован
                     </Badge>
                   )}
                 </h5>
@@ -638,16 +614,11 @@ export default function Resolve() {
                     </div>
                   </div>
                   
-                  <Alert variant="info" className="mb-3">
-                    <i className="bi bi-info-circle me-2"></i>
-                    <strong>Система контроля активирована:</strong> копирование и вставка SQL кода запрещены.
-                    {!isWindowActive && " Окно должно быть активным для отправки решения."}
-                  </Alert>
                   
                   <Form.Group className="mb-3">
                     <Form.Label>
                       <strong>SQL запрос:</strong>
-                      {copyCount > 0 && (
+                      {/* {copyCount > 0 && (
                         <Badge bg="danger" className="ms-2">
                           Попыток копирования: {copyCount}
                         </Badge>
@@ -656,7 +627,7 @@ export default function Resolve() {
                         <Badge bg="danger" className="ms-2">
                           Попыток вставки: {pasteCount}
                         </Badge>
-                      )}
+                      )} */}
                       {hasExistingSolution && (
                         <Badge bg="info" className="ms-2">
                           <i className="bi bi-save me-1"></i> Сохранено
@@ -676,14 +647,7 @@ export default function Resolve() {
                       disabled={!isWindowActive}
                     />
                     <Form.Text className="text-muted">
-                      {!isWindowActive ? (
-                        <span className="text-danger">
-                          <i className="bi bi-exclamation-triangle me-1"></i>
-                          Окно неактивно. Вернитесь на вкладку для продолжения.
-                        </span>
-                      ) : (
-                        'Решайте задачу самостоятельно. Все действия отслеживаются.'
-                      )}
+                        Решайте задачу самостоятельно. Все действия отслеживаются.
                     </Form.Text>
                   </Form.Group>
 
@@ -913,7 +877,7 @@ export default function Resolve() {
       </Container>
 
       {/* Модальное окно для предупреждений */}
-      <Modal show={showWarningModal} onHide={() => setShowWarningModal(false)}>
+      {/* <Modal show={showWarningModal} onHide={() => setShowWarningModal(false)}>
         <Modal.Header closeButton className="bg-warning text-dark">
           <Modal.Title>
             <i className="bi bi-exclamation-triangle me-2"></i>
@@ -932,7 +896,7 @@ export default function Resolve() {
             Понятно
           </Button>
         </Modal.Footer>
-      </Modal>
+      </Modal> */}
     </div>
   );
 }

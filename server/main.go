@@ -23,8 +23,8 @@ func main() {
 		DBName:   "sql_learn",
 	}
 
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
+	if err := godotenv.Load(".env"); err != nil {
+		log.Println("Error loading .env file")
 	}
 
 	// Инициализация БД

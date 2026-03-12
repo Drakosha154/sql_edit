@@ -34,11 +34,11 @@ const Login = ({ setAuth }) => {
 
   return (
     <Container className="mt-5">
-      <h2>Login</h2>
+      <h2>Вход</h2>
       {error && <Alert variant="danger">{error}</Alert>}
       <Form onSubmit={handleSubmit}>
         <Form.Group className="mb-3">
-          <Form.Label>Email</Form.Label>
+          <Form.Label>Почта</Form.Label>
           <Form.Control
             type="email"
             value={email}
@@ -47,7 +47,7 @@ const Login = ({ setAuth }) => {
           />
         </Form.Group>
         <Form.Group className="mb-3">
-          <Form.Label>Password</Form.Label>
+          <Form.Label>Пароль</Form.Label>
           <Form.Control
             type="password"
             value={password}
@@ -55,7 +55,7 @@ const Login = ({ setAuth }) => {
             required
           />
         </Form.Group>
-        <Button type="submit">Login</Button>
+        <Button type="submit">Вход</Button>
       </Form>
     </Container>
   );

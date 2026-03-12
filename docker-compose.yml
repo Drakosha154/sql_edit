@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # PostgreSQL база данных
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      LANG: ru_RU.UTF-8
+      LC_ALL: ru_RU.UTF-8
+      POSTGRES_INITDB_ARGS: '--encoding=UTF8 --lc-collate=ru_RU.UTF-8 --lc-ctype=ru_RU.UTF-8'
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Go бекенд
+  backend:
+    build: 
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "${BACKEND_PORT}:8080"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      BACKEND_HOST: ${BACKEND_HOST}
+      GIN_MODE: ${GIN_MODE:-debug}  # по умолчанию debug
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./server:/main
+      - ./.env:/app/.env
+    restart: unless-stopped
+
+  # React фронтенд
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=http://localhost:${BACKEND_PORT}
+    ports:
+      - "${FRONTEND_PORT}:80"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
