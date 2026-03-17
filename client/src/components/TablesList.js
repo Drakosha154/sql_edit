@@ -40,7 +40,7 @@ const TablesList = ({
       type: 'bigint',
       isPrimary: false,
       isUnique: false,
-      isNullable: true
+      isNullable: false
     };
     
     updateNodeAttributes(activeNode.id, [...activeNode.data.attributes, newAttribute]);

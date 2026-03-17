@@ -1,6 +1,10 @@
 export function parseSQL(sql) {
   const tables = [];
   const foreignKeys = [];
+
+    if (!sql) {
+        return;
+      }
   
   // Удаляем комментарии
   const cleanedSQL = sql.replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '').trim();
@@ -38,6 +42,12 @@ export function parseSQL(sql) {
               toTable,
               toColumn: toColumns[i]
             });
+
+            // ИЗМЕНЕНИЕ: Помечаем колонку как foreign key в таблице
+            const column = columns.find(c => c.name === col);
+            if (column) {
+              column.isForeignKey = true;
+            }
           });
         }
         continue;
@@ -47,28 +57,30 @@ export function parseSQL(sql) {
         const colName = colMatch[1];
         const colType = colMatch[2];
         const constraints = colMatch[3] || '';
-        //console.log(constraints)
         
         const isPrimary = constraints.includes('PRIMARY KEY');
         const isNullable = !constraints.includes('NOT NULL');
+        var isForeignKey = false;
         
         // Ищем REFERENCES (исправленный вариант)
         const refMatch = referenceRegex.exec(constraints);
         //console.log(refMatch)
         if (refMatch) {
           foreignKeys.push({
-            fromTable: tableName,
-            fromColumn: colName,
-            toTable: refMatch[1],
-            toColumn: refMatch[2]
+            fromTable: refMatch[1],
+            fromColumn: refMatch[2],
+            toTable: tableName,
+            toColumn: colName
           });
+          isForeignKey = true;
         }
         
         columns.push({
           name: colName,
           type: colType,
           isPrimary,
-          isNullable
+          isNullable,
+          isForeignKey
         });
       }
     }
@@ -84,10 +96,10 @@ export function parseSQL(sql) {
   
   let alterMatch;
   while ((alterMatch = alterTableRegex.exec(cleanedSQL)) !== null) {
-    const fromTable = alterMatch[1];
-    const fromColumns = alterMatch[2].split(',').map(c => c.trim());
-    const toTable = alterMatch[3];
-    const toColumns = alterMatch[4].split(',').map(c => c.trim());
+    const fromTable = alterMatch[3];
+    const fromColumns = alterMatch[4].split(',').map(c => c.trim());
+    const toTable = alterMatch[1];
+    const toColumns = alterMatch[2].split(',').map(c => c.trim());
     
     fromColumns.forEach((col, i) => {
       foreignKeys.push({
@@ -96,6 +108,14 @@ export function parseSQL(sql) {
         toTable,
         toColumn: toColumns[i]
       });
+
+      const table = tables.find(t => t.name === toTable);
+      if (table) {
+        const column = table.columns.find(c => c.name === toColumns[i]);
+        if (column) {
+          column.isForeignKey = true;
+        }
+      }
     });
   }
   

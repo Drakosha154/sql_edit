@@ -1,5 +1,12 @@
 export function parseInsertSQL(sql) {
     try {
+        console.log(sql)
+
+        if (!sql) {
+            console.log('sql для вставки данных пуст');
+            return;
+        }
+
         const result = {};
         
         // Удаляем комментарии и лишние пробелы

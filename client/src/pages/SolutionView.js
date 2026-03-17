@@ -316,6 +316,7 @@ const executeQuery = async (customSQL = null) => {
 
 // Новая функция для применения WHERE условий
 const applyWhereClause = (data, whereClause) => {
+
     if (!whereClause || !data.length) return data;
     
     // Регулярки для разных операторов сравнения
@@ -327,6 +328,11 @@ const applyWhereClause = (data, whereClause) => {
     andConditions.forEach(condition => {
         // Ищем операторы сравнения: =, !=, <>, >, <, >=, <=
         const operatorMatch = condition.match(/(\w+)\s*(=|!=|<>|>|<|>=|<=)\s*(['"][^'"]*['"]|\d+|\w+)/i);
+
+          if (!operatorMatch) {
+            console.log('sql для вставки данных пуст');
+            return;
+        }
         
         if (operatorMatch) {
             const column = operatorMatch[1].trim();
@@ -434,6 +440,12 @@ const applyWhereClause = (data, whereClause) => {
 
 // Вспомогательная функция для разбора сложных WHERE условий
 const parseWhereCondition = (conditionStr) => {
+
+  if (!conditionStr) {
+            console.log('sql для вставки данных пуст');
+            return;
+        }
+
     // Удаляем лишние пробелы
     conditionStr = conditionStr.trim();
     
@@ -772,7 +784,7 @@ WHERE book_loans.loan_date > '2024-02-01' AND book_loans.return_date IS NULL`
                     <Button 
                       variant="primary" 
                       onClick={() => executeQuery(sqlQuery)}
-                      disabled={!sqlQuery.trim() || isExecuting}
+                      disabled={!sqlQuery || isExecuting}
                     >
                       {isExecuting ? (
                         <>

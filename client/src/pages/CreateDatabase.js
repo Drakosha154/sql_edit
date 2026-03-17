@@ -44,22 +44,28 @@ const edgeTypes = {
   custom: CustomEdge // без стрелочной функции
 };
 
-const createEntityNode = (entityName, attributes, position) => ({
-  id: `${entityName}`, // Уникальный ID
-  type: 'entity',
-  position,
-  data: {
-    label: entityName,
-    attributes: attributes.map(attr => ({
-      id: `${entityName}``attr--${Math.random().toString(36).substr(2, 9)}`, // Уникальный ID для атрибута
-      handleId: `handle-${attr.id}`,
-      name: attr.name,
-      type: attr.type,
-      isPrimary: attr.isPrimary || false,
-      isNullable: attr.isNullable || false
-    }))
-  }
-});
+const createEntityNode = (entityName, attributes, position) => {
+  // Убедимся, что у каждого атрибута есть уникальный ID
+  const processedAttributes = attributes.map(attr => ({
+    id: attr.id || `attr-${Date.now()}`,
+    name: attr.name,
+    type: attr.type,
+    isPrimary: attr.isPrimary || false,
+    isUnique: attr.isUnique || false,
+    isNullable: attr.isNullable !== undefined ? attr.isNullable : true,
+    isForeignKey: attr.isForeignKey || false
+  }));
+
+  return {
+    id: entityName,
+    type: 'entity',
+    position,
+    data: {
+      label: entityName,
+      attributes: processedAttributes
+    }
+  };
+};
 
 const API_BASE_URL = process.env.REACT_APP_API_URL
 
@@ -100,17 +106,9 @@ export default function CreateDatabase() {
               }
             
             const data = await response.json();
+            console.log(data)
               handleImportSQL(data.schema);
               handleImportSQLInsert(data.data);
-              setTaskDescription(data.task);
-
-              const resultData = csvToJson(data.decision);
-              setResult(resultData)
-
-              if (resultData && resultData.length > 0) {
-                const columns = Object.keys(resultData[0]);
-                setSelectedColumns(columns);
-              }
 
         } catch (error) {
               console.error("Ошибка загрузки:", error);
@@ -119,6 +117,37 @@ export default function CreateDatabase() {
     };
     fetchUserDatabases();  
 }, []);
+
+// Добавьте эту функцию после useState
+const normalizeAttributes = useCallback((nodes) => {
+  return nodes.map(node => {
+    const updatedAttributes = node.data.attributes.map(attr => {
+      // Если атрибут заканчивается на _id и не является PRIMARY KEY, помечаем как FOREIGN KEY
+      if (attr.name.endsWith('_id') && !attr.isPrimary) {
+        return { ...attr, isForeignKey: true };
+      }
+      return attr;
+    });
+    
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        attributes: updatedAttributes
+      }
+    };
+  });
+}, []);
+
+// Вызовите эту функцию при загрузке или изменении nodes
+useEffect(() => {
+  if (nodes.length > 0) {
+    const normalizedNodes = normalizeAttributes(nodes);
+    if (JSON.stringify(normalizedNodes) !== JSON.stringify(nodes)) {
+      setNodes(normalizedNodes);
+    }
+  }
+}, [nodes, normalizeAttributes]);
 
   const updateEdgeRelation = useCallback((edgeId, newRelation) => {
   setEdges(eds => eds.map(edge => {
@@ -206,7 +235,7 @@ const updateNodeAttributes = useCallback((nodeId, newAttributes, newLabel = null
   // Если меняется имя - проверяем уникальность
   if (newLabel) {
     if (!isTableNameUnique(newLabel, nodeId)) {
-      alert('Таблица с таким именем уже существует!');
+      alert('Атрибут с таким именем уже существует!');
       return false;
     }
   }
@@ -251,35 +280,147 @@ const addNewNode = useCallback((entityName, attributes) => {
     setActiveNodeId(newNode.id);
   }, [nodes]);
 
-  const onConnect = useCallback((params) => {
-
+const onConnect = useCallback((params) => {
+  console.log('Connection params:', params);
+  
   const sourceNode = nodes.find(n => n.id === params.source);
   const targetNode = nodes.find(n => n.id === params.target);
 
-  const targetAttr = targetNode?.data.attributes.find(a => a.id === params.targetHandle);
-
-  // Получаем текущий выбранный тип связи из активного соединения
-  const activeRelation = edges.find(e => e.id === activeEdgeId)?.data?.relationType || 'one-to-many';
-  
-  if (!targetAttr?.isPrimary && !targetAttr?.isUnique && activeRelation !== 'many-to-many') {
-    alert('Для связей 1:1 и 1:N целевой атрибут должен быть PRIMARY KEY или UNIQUE');
+  if (!sourceNode || !targetNode) {
+    console.error('Source or target node not found');
     return;
   }
+
+  // Получаем исходный атрибут (из которого тянем связь)
+  const sourceAttr = sourceNode?.data.attributes.find(a => a.id === params.sourceHandle);
   
-  setEdges(eds => addEdge({
-    ...params,
-    type: 'custom',
-    data: {
-      relationType: activeRelation,
-      label: activeRelation === 'one-to-one' ? '1:1' : 
-            activeRelation === 'many-to-many' ? 'N:N' : '1:N',
-      sourceLabel: sourceNode?.data.label || params.source,
-      targetLabel: targetNode?.data.label || params.target,
-      sourceAttr: params.sourceHandle,
-      targetAttr: params.targetHandle
-    },
-    animated: true,
-  }, eds));
+  if (!sourceAttr) {
+    alert('Не удалось найти исходный атрибут');
+    return;
+  }
+
+  // Проверяем, что исходный атрибут является ключевым
+  if (!sourceAttr.isPrimary && !sourceAttr.isUnique) {
+    alert('Связи можно создавать только от PRIMARY KEY или UNIQUE атрибутов');
+    return;
+  }
+
+  // Проверяем, не пытаемся ли мы соединить таблицу саму с собой
+  if (params.source === params.target) {
+    alert('Нельзя создать связь с самой таблицей');
+    return;
+  }
+
+  // Проверяем, является ли targetHandle табличным хендлом (для создания нового FK)
+  const isTableTarget = params.targetHandle && params.targetHandle.startsWith('table-target-');
+
+  // Если это подключение к табличному хендлу - создаем новый атрибут
+  if (isTableTarget) {
+    // Создаем новый FOREIGN KEY атрибут в целевой таблице
+    const newAttrId = `attr-${Date.now()}`;
+    const newAttrName = `${sourceNode.data.label.toLowerCase()}_id`;
+    
+    // Проверяем, нет ли уже такого атрибута
+    const existingAttr = targetNode.data.attributes.find(
+      attr => attr.name === newAttrName
+    );
+
+    if (existingAttr) {
+      alert(`Атрибут ${newAttrName} уже существует в таблице ${targetNode.data.label}`);
+      return;
+    }
+
+    // Создаем новый атрибут (внешний ключ)
+    const newAttribute = {
+      id: newAttrId,
+      name: newAttrName,
+      type: sourceAttr.type,
+      isPrimary: false,
+      isUnique: false,
+      isNullable: true,
+      isForeignKey: true
+    };
+
+    console.log('Creating new FK attribute:', newAttribute);
+
+    // Создаем новое ребро
+    const newEdge = {
+      id: `edge-${params.source}-${params.sourceHandle}-${targetNode.id}-${newAttrId}`,
+      source: params.source,
+      target: targetNode.id,
+      sourceHandle: params.sourceHandle,
+      targetHandle: newAttrId,
+      type: 'custom',
+      data: {
+        relationType: 'one-to-many',
+        label: '1:N',
+        sourceLabel: sourceNode.data.label,
+        targetLabel: targetNode.data.label,
+        sourceAttr: sourceAttr.name,
+        targetAttr: newAttrName,
+        isAutoCreated: true
+      },
+      animated: true,
+    };
+
+    // Обновляем nodes и edges в одном setState
+    setNodes(prevNodes => {
+      return prevNodes.map(node => {
+        if (node.id === targetNode.id) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              attributes: [...node.data.attributes, newAttribute]
+            }
+          };
+        }
+        return node;
+      });
+    });
+
+    // Добавляем ребро
+    setEdges(prevEdges => [...prevEdges, newEdge]);
+    
+    return;
+  }
+
+  // Если это подключение к существующему атрибуту
+  if (params.targetHandle) {
+    const targetAttr = targetNode?.data.attributes.find(a => a.id === params.targetHandle);
+    
+    if (!targetAttr) {
+      alert('Целевой атрибут не найден');
+      return;
+    }
+
+    // Проверяем, что целевой атрибут - внешний ключ
+    if (!targetAttr.isForeignKey) {
+      alert('Подключаться можно только к внешним ключам (атрибутам, заканчивающимся на _id)');
+      return;
+    }
+
+    // Создаем связь с существующим атрибутом
+    const newEdge = {
+      id: `edge-${params.source}-${params.sourceHandle}-${targetNode.id}-${params.targetHandle}`,
+      source: params.source,
+      target: targetNode.id,
+      sourceHandle: params.sourceHandle,
+      targetHandle: params.targetHandle,
+      type: 'custom',
+      data: {
+        relationType: 'one-to-many',
+        label: '1:N',
+        sourceLabel: sourceNode.data.label,
+        targetLabel: targetNode.data.label,
+        sourceAttr: sourceAttr.name,
+        targetAttr: targetAttr.name
+      },
+      animated: true,
+    };
+    
+    setEdges(prevEdges => [...prevEdges, newEdge]);
+  }
 }, [nodes]);
 
   const onNodesChange = useCallback(
@@ -333,9 +474,9 @@ CREATE TABLE ${junctionTableName} (
   FOREIGN KEY (${targetNode.data.label}_id) REFERENCES ${targetNode.data.label}(${targetAttr})
 );`;
     } else {
-      return `ALTER TABLE ${sourceNode.data.label}\n` +
-             `ADD CONSTRAINT fk_${sourceNode.data.label}_${sourceAttr}\n` +
-             `FOREIGN KEY (${sourceAttr}) REFERENCES ${targetNode.data.label}(${targetAttr})` +
+      return `ALTER TABLE ${targetNode.data.label}\n` +
+             `ADD CONSTRAINT fk_${targetNode.data.label}_${targetAttr}\n` +
+             `FOREIGN KEY (${targetAttr}) REFERENCES ${sourceNode.data.label}(${sourceAttr})` +
              (edge.data.relationType === 'one-to-one' ? ' UNIQUE;' : ';');
     }
   }).filter(Boolean).join('\n\n');
@@ -505,6 +646,8 @@ const exportSchema = () => {
 const handleImportSQL = (sql = sqlCode) => {
     try {
       const parsedData = parseSQL(sql); // Парсим SQL
+
+      console.log(parsedData)
       
       // Создаем узлы для таблиц
       const newNodes = parsedData.tables.map(table => ({
@@ -540,6 +683,8 @@ const handleImportSQL = (sql = sqlCode) => {
           targetAttr: fk.toColumn
         }
       }));
+
+      console.log(newEdges)
 
       setNodes(newNodes);
       setEdges(newEdges);
@@ -620,6 +765,7 @@ const handleImportSQL = (sql = sqlCode) => {
       setImportError(error.message);
     }
   };
+
 
 const flowContent = useMemo(() => (
   <ReactFlow

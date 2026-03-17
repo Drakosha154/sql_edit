@@ -22,6 +22,7 @@ const DatabaseVisualPreview = ({ nodes, edges, setNodes, onNodesChange, onEdgesC
   const [showPreview, setShowPreview] = useState(false);
   const applyLayout = useDagreLayout();
 
+
   //компановка
   const handleAutoLayout = useCallback(() => {
     setShowPreview(true)

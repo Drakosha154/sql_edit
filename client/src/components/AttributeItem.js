@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
 
 const AttributeItem = React.memo(({ attribute, onUpdate, onRemove, nodeId, updateEdgeAttributes}) => {
 
@@ -40,6 +40,12 @@ const AttributeItem = React.memo(({ attribute, onUpdate, onRemove, nodeId, updat
 
     onUpdate(attribute.id, field, value);
   }, [onUpdate, attribute.id, nodeId, prevName, updateEdgeAttributes]);
+
+const isForeignKey = useMemo(() => {
+  // Атрибут считается внешним ключом, если его имя заканчивается на _id
+  // или есть специальный флаг isForeignKey
+  return attribute.isForeignKey;
+}, [attribute]);
 
   const handleTypeChange = useCallback((e) => {
     const newType = e.target.value;
@@ -173,7 +179,10 @@ const AttributeItem = React.memo(({ attribute, onUpdate, onRemove, nodeId, updat
             <option value="JSONB">JSONB</option>
           </optgroup>
         </select>
-      
+        
+      {isForeignKey && (
+  <i className="bi bi-link-45deg text-primary ms-1" title="Foreign Key"></i>
+)}
 
       {/* Иконки вместо чекбоксов */}
       <div className="d-flex gap-1">

@@ -66,7 +66,6 @@ const Sidebar = React.memo(({
         </button>
       </div>
       <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
-          {/* Кнопки переключения вкладок */}
           <Nav variant="tabs" className="flex-row nav-justified">
             <Nav.Item>
               <Nav.Link eventKey="tables">

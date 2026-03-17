@@ -58,7 +58,8 @@ const createEntityNode = (entityName, attributes, position) => ({
       name: attr.name,
       type: attr.type,
       isPrimary: attr.isPrimary || false,
-      isNullable: attr.isNullable || false
+      isNullable: attr.isNullable || false,
+      isForeignKey: attr.isForeignKey || false
     }))
   }
 });
@@ -110,7 +111,6 @@ export default function CreateTask() {
               }
             
             const data = await response.json();
-            console.log(data)
 
               setDatabaseName(data.nameDatabase);
               handleImportSQL(data.create);
@@ -412,6 +412,8 @@ const addNewNode = useCallback((entityName, attributes) => {
   const fksSQL = edges.map(edge => {
     const sourceNode = nodes.find(n => n.id === edge.source);
     const targetNode = nodes.find(n => n.id === edge.target);
+    console.log('sourceNode', sourceNode)
+    console.log('targetNode', targetNode)
     
     const sourceAttr = sourceNode?.data.attributes.find(a => a.id === edge.sourceHandle)?.name;
     const targetAttr = targetNode?.data.attributes.find(a => a.id === edge.targetHandle)?.name;
@@ -427,9 +429,9 @@ CREATE TABLE ${junctionTableName} (
   FOREIGN KEY (${targetNode.data.label}_id) REFERENCES ${targetNode.data.label}(${targetAttr})
 );`;
     } else {
-      return `ALTER TABLE ${sourceNode.data.label}\n` +
-             `ADD CONSTRAINT fk_${sourceNode.data.label}_${sourceAttr}\n` +
-             `FOREIGN KEY (${sourceAttr}) REFERENCES ${targetNode.data.label}(${targetAttr})` +
+      return `ALTER TABLE ${targetNode.data.label}\n` +
+             `ADD CONSTRAINT fk_${targetNode.data.label}_${targetAttr}\n` +
+             `FOREIGN KEY (${targetAttr}) REFERENCES ${sourceNode.data.label}(${sourceAttr})` +
              (edge.data.relationType === 'one-to-one' ? ' UNIQUE;' : ';');
     }
   }).filter(Boolean).join('\n\n');
@@ -721,6 +723,7 @@ const handleImportSQL = (sql = sqlCode) => {
             id: `${table.name}-${col.name}`,
             name: col.name,
             type: col.type,
+            isForeignKey: col.isForeignKey,
             isPrimary: col.isPrimary,
             isNullable: col.isNullable
           }))
@@ -757,6 +760,12 @@ const handleImportSQL = (sql = sqlCode) => {
 // Функция для парсинга SQL вставки данных
 const parseInsertSQL = (sql) => {
   try {
+
+    if (!sql) {
+        console.log('SQL для вставки данных пуст');
+        return;
+      }
+
     const result = {};
     
     if (!sql || typeof sql !== 'string') {
@@ -766,7 +775,7 @@ const parseInsertSQL = (sql) => {
     // Нормализуем SQL - убираем лишние пробелы и переносы
     const normalizedSQL = sql.replace(/\s+/g, ' ').trim();
     
-    // Регулярное выражение для поиска INSERT запросов (улучшенное)
+    // Улучшенное регулярное выражение для поиска INSERT запросов
     const insertRegex = /INSERT\s+INTO\s+([^\s(]+)\s*\(([^)]+)\)\s*VALUES\s*(.*?)(?=INSERT|$)/gi;
     
     let match;
@@ -774,10 +783,22 @@ const parseInsertSQL = (sql) => {
     
     while ((match = insertRegex.exec(normalizedSQL)) !== null) {
       queryCount++;
-      const tableName = match[1].trim().replace(/["`]/g, '');
-      const columns = match[2].split(',').map(c => c.trim().replace(/["`]/g, ''));
-      const valuesPart = match[3].trim();
       
+      // Защита от undefined для каждого захваченного значения
+      if (!match[1] || !match[2]) {
+        console.warn('Пропущен некорректный INSERT запрос:', match[0]);
+        continue;
+      }
+      
+      const tableName = match[1].trim().replace(/["`]/g, '');
+      
+      // Защита при разбиении колонок
+      const columnsStr = match[2] || '';
+      const columns = columnsStr.split(',').map(c => {
+        return c ? c.trim().replace(/["`]/g, '') : '';
+      }).filter(c => c !== ''); // Убираем пустые колонки
+      
+      const valuesPart = match[3] ? match[3].trim() : '';
       
       if (!result[tableName]) {
         result[tableName] = [];
@@ -786,33 +807,39 @@ const parseInsertSQL = (sql) => {
       // Парсим значения - ищем все группы в скобках
       const valueGroups = valuesPart.match(/\(([^)]+)\)/g) || [];
       
-      valueGroups.forEach((valuesStr, groupIndex) => {
+      valueGroups.forEach((valuesStr) => {
         // Убираем скобки и разбиваем по запятым
         const values = valuesStr
           .replace(/[()]/g, '')
           .split(',')
           .map(v => {
-            let val = v.trim();
+            const val = v ? v.trim() : '';
             
             // Убираем кавычки вокруг строк
             if ((val.startsWith("'") && val.endsWith("'")) || 
                 (val.startsWith('"') && val.endsWith('"'))) {
-              val = val.slice(1, -1);
+              return val.slice(1, -1);
             }
             
             // Обработка NULL и чисел
             if (val.toUpperCase() === 'NULL') return null;
-            if (!isNaN(val) && val.trim() !== '') return Number(val);
+            if (val !== '' && !isNaN(val)) return Number(val);
             
             return val;
           });
           
+        // Проверяем соответствие количества колонок и значений
         if (columns.length === values.length) {
           const row = {};
           columns.forEach((col, i) => {
-            row[col] = values[i];
+            if (col) { // Проверяем, что имя колонки не пустое
+              row[col] = values[i];
+            }
           });
-          result[tableName].push(row);
+          // Добавляем строку только если есть хотя бы одна колонка
+          if (Object.keys(row).length > 0) {
+            result[tableName].push(row);
+          }
         } else {
           console.warn(`Несоответствие колонок и значений в таблице ${tableName}: ${columns.length} колонок vs ${values.length} значений`);
         }
@@ -828,6 +855,10 @@ const parseInsertSQL = (sql) => {
 
   const handleImportSQLInsert = (sql) => {
     try {
+
+      if (!sql) {
+        return;
+      }
       
       const parsedData = parseInsertSQL(sql);
 
@@ -861,7 +892,6 @@ const parseInsertSQL = (sql) => {
       setCsvDecision={setCsvDecision}
       sqlQuery={sqlQuery}
     />
-    {console.log(selectedDatabase)}
     <div class="ms-3 p-2 border rounded">
       Выбрана база данных: {selectedDatabase ? selectedDatabase : 'не выбрана'}
     </div>

@@ -3,6 +3,11 @@ function parseCsvLine(line, delimiter) {
   let current = '';
   let inQuotes = false;
   let escapeNext = false;
+
+  if (!line) {
+        console.log('line для вставки данных пуст');
+        return;
+      }
   
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
