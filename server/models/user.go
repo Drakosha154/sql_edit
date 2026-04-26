@@ -28,6 +28,7 @@ type Database_lists struct {
 	Database_name        string
 	Database_create_text string
 	Database_insert_text string
+	TestDataSets         string `gorm:"type:jsonb;default:'[]'"` // 🆕 НОВОЕ ПОЛЕ
 	CreatedAt            time.Time
 
 	// Связь с создателем
@@ -40,9 +41,10 @@ type Tasks_list struct {
 	Task_name         string `gorm:"not null"`
 	Task_formulation  string
 	Database_decision string
+	ExpectedResults   string `gorm:"type:jsonb;default:'[]'"` // 🆕 НОВОЕ ПОЛЕ
 	CreatedAt         time.Time
 	ID_database       uint
-	SqlQuery		  string
+	SqlQuery          string
 
 	// Связи
 	User User `gorm:"foreignKey:ID_creator"`

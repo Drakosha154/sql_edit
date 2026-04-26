@@ -243,13 +243,35 @@ export function parseInsertSQLSimple(sql) {
 
 // Упрощенный парсер строк значений
 function parseValueRows(valuesText) {
+    const strings = [];
+    let stringIndex = 0;
+    
+    // Временно заменяем все строки в кавычках на плейсхолдеры
+    let textWithPlaceholders = valuesText
+        .replace(/'([^'\\]*(\\.[^'\\]*)*)'/g, (match) => {
+            strings.push(match);
+            return `__STRING_${stringIndex++}__`;
+        })
+        .replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, (match) => {
+            strings.push(match);
+            return `__STRING_${stringIndex++}__`;
+        });
+
+    console.log(valuesText)
+    
     const rows = [];
     const rowRegex = /\(([^)]+)\)/g;
     let match;
     
-    while ((match = rowRegex.exec(valuesText)) !== null) {
-        const rowValues = match[1].split(',')
-            .map(v => v.trim());
+    while ((match = rowRegex.exec(textWithPlaceholders)) !== null) {
+        let rowContent = match[1];
+        
+        // Возвращаем оригинальные строки
+        rowContent = rowContent.replace(/__STRING_(\d+)__/g, (match, index) => {
+            return strings[parseInt(index)];
+        });
+        
+        const rowValues = parseValuesFromGroup(rowContent);
         rows.push(rowValues);
     }
     

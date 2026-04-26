@@ -33,7 +33,7 @@ function jsonToCsv(data) {
   return csv;
 }
 
-export default function TaskSaveButton({ taskDescription, result, setCsvDecision, databaseId, sqlQuery }) {
+export default function TaskSaveButton({ taskDescription, result, setCsvDecision, databaseId, sqlQuery, generatedResults }) {
   const [show, setShow] = useState(false);
   const [name, setName] = useState('');
   const navigate = useNavigate();
@@ -54,12 +54,15 @@ export default function TaskSaveButton({ taskDescription, result, setCsvDecision
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          Name: name,
-          Task: taskDescription,
-          Decision: currentScv,
-          Id_database: databaseId,
-          SqlQuery: sqlQuery,
-        })
+  Name: name,
+  Task: taskDescription,
+  Decision: generatedResults ? generatedResults.main_csv : currentScv,
+  Id_database: databaseId,
+  SqlQuery: sqlQuery,
+  expected_results: generatedResults && generatedResults.expected_results 
+    ? JSON.stringify(generatedResults.expected_results)
+    : '[]'
+})
       });
 
       if (!response.ok) throw new Error('Ошибка сохранения');
@@ -86,11 +89,14 @@ export default function TaskSaveButton({ taskDescription, result, setCsvDecision
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          Id: id,
-          Task: taskDescription,
-          Decision: currentScv,
-          SqlQuery: sqlQuery,
-        })
+  Id: id,
+  Task: taskDescription,
+  Decision: generatedResults ? generatedResults.main_csv : currentScv,
+  SqlQuery: sqlQuery,
+  expected_results: generatedResults && generatedResults.expected_results 
+    ? JSON.stringify(generatedResults.expected_results)
+    : '[]'
+})
       });
 
       if (!response.ok) throw new Error('Ошибка сохранения');

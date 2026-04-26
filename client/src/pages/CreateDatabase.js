@@ -19,6 +19,8 @@ import {
   InputGroup, 
   Container,
   Card,
+  Alert,
+  Badge  // 🆕 ДОБАВИТЬ
 } from 'react-bootstrap';
 import { useParams } from 'react-router-dom';
 import { Tab, Nav, Row, Col } from 'react-bootstrap';
@@ -33,6 +35,7 @@ import Task_manage from './Task_manage';
 import TaskPreview from './TaskPreview';
 import SolutionView from './SolutionView';
 import DatabaseSaveButton from '../components/DatabaseSaveButton'
+import { useDagreLayout } from '../utils/useDagreLayout';
 
 import { parseSQL } from '../utils/sqlParser';
 import { csvToJson } from '../utils/csvToJson';
@@ -53,7 +56,8 @@ const createEntityNode = (entityName, attributes, position) => {
     isPrimary: attr.isPrimary || false,
     isUnique: attr.isUnique || false,
     isNullable: attr.isNullable !== undefined ? attr.isNullable : true,
-    isForeignKey: attr.isForeignKey || false
+    isForeignKey: attr.isForeignKey || false,
+    isAutoIncrement: attr.isAutoIncrement || false
   }));
 
   return {
@@ -77,7 +81,11 @@ export default function CreateDatabase() {
   const [activeEdgeId, setActiveEdgeId] = useState(null);
   const [activeTab, setActiveTab] = useState('ERD');
   const [sidebarActiveTab, setSidebarActiveTab] = useState('tables');
-  const [tableData, setTableData] = useState([]);
+  const [tableData, setTableData] = useState({
+    main: {}  // Основной набор данных
+  });
+  const [activeDataSet, setActiveDataSet] = useState('main');
+  const [dataSets, setDataSets] = useState(['main']);
   const [sqlCodeInsert, setSqlCodeInsert] = useState('');
   const [sqlCode, setSqlCode] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
@@ -88,6 +96,171 @@ export default function CreateDatabase() {
   const [selectedColumns, setSelectedColumns] = useState([]);
 
   const { id } = useParams();
+
+  const applyLayout = useDagreLayout();
+
+  const handleAutoLayout = useCallback(() => {
+    const layoutedNodes = applyLayout(nodes, edges, 'LR'); // 'TB' = Top to Bottom, 'LR' = Left to Right
+    setNodes(layoutedNodes);
+  }, [nodes, edges, applyLayout, setNodes]);
+
+  const addTestDataSet = () => {
+  const testNumber = dataSets.filter(ds => ds.startsWith('test')).length + 1;
+  const newDataSetName = `test${testNumber}`;
+  
+  setDataSets([...dataSets, newDataSetName]);
+
+  setTableData({
+    ...tableData,
+    [newDataSetName]: {}
+  });
+  setActiveDataSet(newDataSetName);
+};
+
+// Удалить проверочный набор
+const removeTestDataSet = (dataSetName) => {
+  if (dataSetName === 'main') return;
+  
+  if (window.confirm(`Удалить проверочный набор "${getDataSetLabel(dataSetName)}"?`)) {
+    const newDataSets = dataSets.filter(ds => ds !== dataSetName);
+    const newTableData = { ...tableData };
+    delete newTableData[dataSetName];
+    
+    setDataSets(newDataSets);
+    setTableData(newTableData);
+    
+    if (activeDataSet === dataSetName) {
+      setActiveDataSet('main');
+    }
+  }
+};
+
+// Копировать данные из основного набора
+const copyFromMain = (targetDataSet) => {
+  if (targetDataSet === 'main') return;
+  
+  setTableData({
+    ...tableData,
+    [targetDataSet]: JSON.parse(JSON.stringify(tableData.main))
+  });
+};
+
+// Получить читаемое название набора
+const getDataSetLabel = (dataSetName) => {
+  if (dataSetName === 'main') return 'Основной';
+  const testNumber = dataSetName.replace('test', '');
+  return `Проверка ${testNumber}`;
+};
+
+// Подсчет общего количества записей в наборе
+const getDataSetRecordCount = (dataSetName) => {
+  const dataSet = tableData[dataSetName] || {};
+  return Object.keys(dataSet).reduce((sum, table) => 
+    sum + (dataSet[table]?.length || 0), 0
+  );
+};
+
+// Функция для парсинга SQL вставки данных
+const parseInsertSQL = (sql) => {
+  try {
+    const result = {};
+    const insertRegex = /INSERT\s+INTO\s+([^\s(]+)\s*\(([^)]+)\)\s*VALUES\s*([^;]+);/gi;
+    
+    let match;
+    while ((match = insertRegex.exec(sql)) !== null) {
+      const tableName = match[1].trim();
+      const columns = match[2].split(',').map(col => col.trim());
+      const valuesStr = match[3].trim();
+      
+      
+      const valueRegex = /\(([^)]+)\)/g;
+      const rows = [];
+      let valueMatch;
+      
+      while ((valueMatch = valueRegex.exec(valuesStr)) !== null) {
+        const values = valueMatch[1].split(',').map(val => {
+          val = val.trim();
+          if ((val.startsWith("'") && val.endsWith("'")) || 
+              (val.startsWith('"') && val.endsWith('"'))) {
+            return val.substring(1, val.length - 1);
+          }
+          return val;
+        });
+        
+        const row = {};
+        columns.forEach((col, i) => {
+          row[col] = values[i] || '';
+        });
+        rows.push(row);
+      }
+      
+      result[tableName] = rows;
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Ошибка парсинга INSERT SQL:', error);
+    return {};
+  }
+};
+
+useEffect(() => {
+  const fetchDatabase = async () => {
+    if (id) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/databases/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Загружаем схему
+          if (data.database_create_text) {
+            handleImportSQL(data.database_create_text);
+          }
+          
+          // 🆕 Загружаем основной набор данных
+          let newTableData = { main: {} };
+          if (data.database_insert_text) {
+            const parsedMainData = parseInsertSQL(data.database_insert_text);
+            newTableData.main = parsedMainData;
+          }
+          
+          // 🆕 Загружаем проверочные наборы данных
+          let newDataSets = ['main'];
+          if (data.test_data_sets && data.test_data_sets !== '[]') {
+            try {
+              const parsedTests = JSON.parse(data.test_data_sets);
+              
+              parsedTests.forEach((test, index) => {
+                const dataSetName = `test${index + 1}`;
+                newDataSets.push(dataSetName);
+                
+                if (test.insert_sql) {
+                  newTableData[dataSetName] = parseInsertSQL(test.insert_sql);
+                } else {
+                  newTableData[dataSetName] = {};
+                }
+              });
+            } catch (e) {
+              console.error('Ошибка парсинга test_data_sets:', e);
+            }
+          }
+          
+          setTableData(newTableData);
+          setDataSets(newDataSets);
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки базы данных:', error);
+      }
+    }
+  };
+  
+  fetchDatabase();
+}, [id]);
     
   useEffect(() => {
     const fetchUserDatabases = async () => {
@@ -106,7 +279,6 @@ export default function CreateDatabase() {
               }
             
             const data = await response.json();
-            console.log(data)
               handleImportSQL(data.schema);
               handleImportSQLInsert(data.data);
 
@@ -117,6 +289,8 @@ export default function CreateDatabase() {
     };
     fetchUserDatabases();  
 }, []);
+
+
 
 // Добавьте эту функцию после useState
 const normalizeAttributes = useCallback((nodes) => {
@@ -281,7 +455,7 @@ const addNewNode = useCallback((entityName, attributes) => {
   }, [nodes]);
 
 const onConnect = useCallback((params) => {
-  console.log('Connection params:', params);
+
   
   const sourceNode = nodes.find(n => n.id === params.source);
   const targetNode = nodes.find(n => n.id === params.target);
@@ -341,7 +515,6 @@ const onConnect = useCallback((params) => {
       isForeignKey: true
     };
 
-    console.log('Creating new FK attribute:', newAttribute);
 
     // Создаем новое ребро
     const newEdge = {
@@ -437,35 +610,56 @@ const onConnect = useCallback((params) => {
 
   const generateSQL = () => {
   // 1. Сначала создаем все таблицы
-  const tablesSQL = nodes.map(node => {
+const tablesSQL = nodes.map(node => {
     const columns = node.data.attributes.map(attr => {
       let columnDef = `  ${attr.name} ${getSqlType(attr.type)}`;
-      if (attr.isPrimary) columnDef += ' PRIMARY KEY';
+      if (attr.isAutoIncrement) {
+  // Если тип INT и есть AUTO_INCREMENT, меняем на SERIAL
+  if (attr.type.toUpperCase() === 'INTEGER' || attr.type.toUpperCase() === 'INT') {
+    columnDef = `  ${attr.name} SERIAL`;
+  }
+}
+if (attr.isPrimary) columnDef += ' PRIMARY KEY';
       if (!attr.isNullable) columnDef += ' NOT NULL';
       return columnDef;
     }).join(',\n');
 
-    // Добавляем UNIQUE constraints отдельно
     const uniques = node.data.attributes
       .filter(attr => attr.isUnique && !attr.isPrimary)
       .map(attr => `  UNIQUE (${attr.name})`)
       .join(',\n');
 
-    const tableDef = `CREATE TABLE ${node.data.label} (\n${columns}`;
-    return uniques ? `${tableDef},\n${uniques}\n);` : `${tableDef}\n);`;
+    // НОВОЕ: Добавляем FOREIGN KEY constraints внутрь CREATE TABLE
+    const foreignKeys = edges
+      .filter(edge => edge.target === node.id && edge.data.relationType !== 'many-to-many')
+      .map(edge => {
+        const sourceNode = nodes.find(n => n.id === edge.source);
+        const sourceAttr = sourceNode?.data.attributes.find(a => a.id === edge.sourceHandle)?.name;
+        const targetAttr = node.data.attributes.find(a => a.id === edge.targetHandle)?.name;
+        return `  FOREIGN KEY (${targetAttr}) REFERENCES ${sourceNode.data.label}(${sourceAttr})`;
+      })
+      .join(',\n');
+
+    let tableDef = `CREATE TABLE ${node.data.label} (\n${columns}`;
+    if (uniques) tableDef += `,\n${uniques}`;
+    if (foreignKeys) tableDef += `,\n${foreignKeys}`;
+    tableDef += '\n);';
+    
+    return tableDef;
   }).join('\n\n');
 
   // 2. Затем добавляем внешние ключи
-  const fksSQL = edges.map(edge => {
+  const fksSQL = edges
+  .filter(edge => edge.data.relationType === 'many-to-many')  // ✅ ТОЛЬКО many-to-many
+  .map(edge => {
     const sourceNode = nodes.find(n => n.id === edge.source);
     const targetNode = nodes.find(n => n.id === edge.target);
     
     const sourceAttr = sourceNode?.data.attributes.find(a => a.id === edge.sourceHandle)?.name;
     const targetAttr = targetNode?.data.attributes.find(a => a.id === edge.targetHandle)?.name;
 
-    if (edge.data.relationType === 'many-to-many') {
-      const junctionTableName = `${sourceNode.data.label}_${targetNode.data.label}`;
-      return `
+    const junctionTableName = `${sourceNode.data.label}_${targetNode.data.label}`;
+    return `
 CREATE TABLE ${junctionTableName} (
   ${sourceNode.data.label}_id ${getSqlType(sourceNode.data.attributes.find(a => a.id === edge.sourceHandle)?.type)},
   ${targetNode.data.label}_id ${getSqlType(targetNode.data.attributes.find(a => a.id === edge.targetHandle)?.type)},
@@ -473,15 +667,11 @@ CREATE TABLE ${junctionTableName} (
   FOREIGN KEY (${sourceNode.data.label}_id) REFERENCES ${sourceNode.data.label}(${sourceAttr}),
   FOREIGN KEY (${targetNode.data.label}_id) REFERENCES ${targetNode.data.label}(${targetAttr})
 );`;
-    } else {
-      return `ALTER TABLE ${targetNode.data.label}\n` +
-             `ADD CONSTRAINT fk_${targetNode.data.label}_${targetAttr}\n` +
-             `FOREIGN KEY (${targetAttr}) REFERENCES ${sourceNode.data.label}(${sourceAttr})` +
-             (edge.data.relationType === 'one-to-one' ? ' UNIQUE;' : ';');
-    }
-  }).filter(Boolean).join('\n\n');
+  })
+  .filter(Boolean)
+  .join('\n\n');
 
-  return `${tablesSQL}\n\n${fksSQL}`;
+return fksSQL ? `${tablesSQL}\n\n${fksSQL}` : tablesSQL;
 };
 
 // Функция для преобразования типов
@@ -498,11 +688,11 @@ const getSqlType = (type) => {
 };
 
 const generateDataInsertSQL = (nodes, tableData, options = {}) => {
-  const defaults = {
-    batchSize: 100,     // Максимальное количество строк в одном INSERT
-    truncateFirst: true // Добавлять TRUNCATE перед вставкой
+  const { dataSet = 'main' } = options;
+  const config = {
+    truncateFirst: true,
+    batchSize: 100
   };
-  const config = { ...defaults, ...options };
 
   let sqlCodeInsert = '-- SQL для заполнения таблиц данными\n\n';
   sqlCodeInsert += 'BEGIN TRANSACTION;\n\n';
@@ -511,7 +701,7 @@ const generateDataInsertSQL = (nodes, tableData, options = {}) => {
   nodes.forEach(node => {
     const tableName = node.data.label;
     const columns = node.data.attributes;
-    const dataRows = tableData[tableName] || [];
+    const dataRows = tableData[dataSet]?.[tableName] || [];
 
     if (!dataRows.length) return;
 
@@ -523,13 +713,14 @@ const generateDataInsertSQL = (nodes, tableData, options = {}) => {
     // Разбиваем данные на батчи
     for (let i = 0; i < dataRows.length; i += config.batchSize) {
       const batch = dataRows.slice(i, i + config.batchSize);
-      const columnNames = columns.map(col => `"${col.name}"`).join(', ');
+      const insertableColumns = columns.filter(col => !col.isAutoIncrement);
+      const columnNames = insertableColumns.map(col => `"${col.name}"`).join(', ');
 
       sqlCodeInsert += `INSERT INTO ${tableName} (${columnNames})\nVALUES\n`;
 
       // Добавляем строки данных
       sqlCodeInsert += batch.map(row => {
-        const values = columns.map(col => {
+        const values = insertableColumns.map(col => {
           const value = row[col.name];
           
           // Обработка разных типов данных
@@ -647,7 +838,6 @@ const handleImportSQL = (sql = sqlCode) => {
     try {
       const parsedData = parseSQL(sql); // Парсим SQL
 
-      console.log(parsedData)
       
       // Создаем узлы для таблиц
       const newNodes = parsedData.tables.map(table => ({
@@ -661,7 +851,9 @@ const handleImportSQL = (sql = sqlCode) => {
             name: col.name,
             type: col.type,
             isPrimary: col.isPrimary,
-            isNullable: col.isNullable
+            isNullable: col.isNullable,
+            isForeignKey: col.isForeignKey || false,
+            isAutoIncrement: col.isAutoIncrement || false
           }))
         }
       }));
@@ -684,7 +876,6 @@ const handleImportSQL = (sql = sqlCode) => {
         }
       }));
 
-      console.log(newEdges)
 
       setNodes(newNodes);
       setEdges(newEdges);
@@ -695,67 +886,25 @@ const handleImportSQL = (sql = sqlCode) => {
   }
 };
 
-// Функция для парсинга SQL вставки данных
-  const parseInsertSQL = (sql) => {
-    try {
-      const result = {};
-    
-    // Регулярное выражение для поиска всех INSERT запросов
-    const insertRegex = /INSERT\s+INTO\s+([^\s(]+)\s*\(([^)]+)\)\s*VALUES\s*([^;]+);/gi;
-    
-    let match;
-    
-    while ((match = insertRegex.exec(sql)) !== null) {
-      const tableName = match[1].trim().replace(/"/g, '');
-      const columns = match[2].split(',').map(c => c.trim().replace(/"/g, ''));
-      const valuesMatch = match[3].match(/\(([^)]+)\)/g);
-      
-      if (!result[tableName]) {
-        result[tableName] = [];
-      }
-      
-      valuesMatch.forEach(valuesStr => {
-        const values = valuesStr
-          .replace(/[()]/g, '')
-          .split(',')
-          .map(v => v.trim().replace(/^'(.*)'$/, '$1')); // Удаляем кавычки вокруг значений
-          
-        if (columns.length === values.length) {
-          const row = {};
-          columns.forEach((col, i) => {
-            // Преобразуем 'NULL' в null и числа в числа
-            row[col] = values[i] === 'NULL' ? null : 
-                       !isNaN(values[i]) ? Number(values[i]) : 
-                       values[i];
-          });
-          result[tableName].push(row);
-        }
-      });
-    }
-    
-    return result;
-  } catch (error) {
-    throw new Error(`Ошибка парсинга SQL: ${error.message}`);
-  }
-  };
-
   const handleImportSQLInsert = (sql) => {
     try {
       
       const parsedData = parseInsertSQL(sql);
 
+
       const updatedTableData = { ...tableData };
+
       
 
       for (const tableName in parsedData) {
       if (parsedData.hasOwnProperty(tableName)) {
         // Объединяем существующие данные с новыми для каждой таблицы
-        updatedTableData[tableName] = [
-          ...(updatedTableData[tableName] || []),
+        updatedTableData = [
           ...parsedData[tableName]
         ];
       }
     }
+
       
       setTableData(updatedTableData);
       setSqlCode('');
@@ -795,15 +944,15 @@ const flowContent = useMemo(() => (
     <div class='erd-container d-flex flex-column vh-100 overflow-hidden'>
     <div class='p-2 border-bottom'>
       <DatabaseSaveButton 
-          nodes={nodes}
-          tableData={tableData}
-          generateSQL={generateSQL}
-          generateDataInsertSQL={generateDataInsertSQL}
-          taskDescription={taskDescription}
-          result={result}
-          setCsvDecision={setCsvDecision}
-          csvDecision={csvDecision}
-      />
+    nodes={nodes}
+    tableData={tableData}
+    generateSQL={generateSQL}
+    generateDataInsertSQL={generateDataInsertSQL}
+    taskDescription={taskDescription}
+    result={result}
+    setCsvDecision={setCsvDecision}
+    csvDecision={csvDecision}
+/>
     </div>
     <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
 
@@ -851,6 +1000,7 @@ const flowContent = useMemo(() => (
             Заполнение таблиц
           </Nav.Link>
         </Nav.Item>
+
       </Nav>
 
       <Tab.Content className="d-flex w-100 h-100 overflow-auto">
@@ -886,6 +1036,7 @@ const flowContent = useMemo(() => (
                 csvDecision={csvDecision}
                 setSelectedColumns={setSelectedColumns}
                 selectedColumns={selectedColumns}
+                handleAutoLayout={handleAutoLayout}
               />
               </div>
               <div className="d-flex reactflow-wrapper position-relative flex-grow-1 h-100">
@@ -894,13 +1045,91 @@ const flowContent = useMemo(() => (
           </div>
         </Tab.Pane>
 
-        <Tab.Pane className="d-flex w-100 h-100" eventKey="manage" forceMount={activeTab !== "manage"}>
-          <Task_manage 
-          tableData={tableData}
-          setTableData={setTableData}
-          nodes={nodes} 
-          />
-        </Tab.Pane>
+        <Tab.Pane className="d-flex w-100 h-100 flex-column" eventKey="manage" forceMount={activeTab !== "manage"}>
+  {/* 🆕 Панель управления наборами данных */}
+  <Container fluid className="border-bottom py-3">
+    <Row className="align-items-center">
+      <Col md={8}>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <span className="fw-bold me-2">Набор данных:</span>
+          
+          {dataSets.map(dataSet => (
+            <div key={dataSet} className="d-flex align-items-center">
+              <Button
+                variant={activeDataSet === dataSet ? "primary" : "outline-secondary"}
+                size="sm"
+                onClick={() => setActiveDataSet(dataSet)}
+                className="me-1"
+              >
+                {getDataSetLabel(dataSet)}
+                {activeDataSet === dataSet && (
+                  <Badge bg="light" text="dark" className="ms-2">
+                    {getDataSetRecordCount(dataSet)} записей
+                  </Badge>
+                )}
+              </Button>
+              
+              {dataSet !== 'main' && activeDataSet === dataSet && (
+                <Button
+                  variant="outline-danger"
+                  size="sm"
+                  onClick={() => removeTestDataSet(dataSet)}
+                  title="Удалить набор"
+                  className="me-2"
+                >
+                  <i className="bi bi-trash"></i>
+                </Button>
+              )}
+            </div>
+          ))}
+          
+          <Button
+            variant="success"
+            size="sm"
+            onClick={addTestDataSet}
+          >
+            <i className="bi bi-plus-circle me-1"></i>
+            Добавить проверку
+          </Button>
+        </div>
+      </Col>
+      
+      <Col md={4} className="text-end">
+        {activeDataSet !== 'main' && (
+          <Button
+            variant="outline-primary"
+            size="sm"
+            onClick={() => copyFromMain(activeDataSet)}
+          >
+            <i className="bi bi-files me-1"></i>
+            Скопировать из основного
+          </Button>
+        )}
+      </Col>
+    </Row>
+    
+    <Row className="mt-2">
+      <Col>
+        <Alert variant={activeDataSet === 'main' ? 'info' : 'warning'} className="mb-0 py-2">
+          <i className="bi bi-info-circle me-2"></i>
+          <small>
+            {activeDataSet === 'main' 
+              ? 'Редактируете основной набор данных. Эти данные будут использоваться для отображения итогового решения.'
+              : `Редактируете проверочный набор "${getDataSetLabel(activeDataSet)}". Эти данные будут использоваться для автоматической проверки решений студентов.`
+            }
+          </small>
+        </Alert>
+      </Col>
+    </Row>
+  </Container>
+  
+  <Task_manage 
+    nodes={nodes}
+    tableData={tableData}
+    setTableData={setTableData}
+    activeDataSet={activeDataSet}
+  />
+</Tab.Pane>
       </Tab.Content> 
     </Tab.Container>
   </div>

@@ -29,7 +29,8 @@ const Sidebar = React.memo(({
   taskDescription,
   result,
   setCsvDecision,
-  csvDecision
+  csvDecision,
+  handleAutoLayout
 }) => {
 
   const deleteNode = useCallback((nodeId) => {
@@ -59,10 +60,11 @@ const Sidebar = React.memo(({
         </button>
         <button 
           variant="outline-primary" 
-          onClick={() => setShowImportModal(true)}
+          onClick={handleAutoLayout}  // ИЗМЕНЕНО: было setShowImportModal(true)
           className="btn border flex-fill"
+          disabled={nodes.length === 0}  // НОВОЕ: отключаем если нет таблиц
         >
-          <i className="bi bi-file-earmark-arrow-down"></i> Форматировать схему
+          <i className="bi bi-diagram-3"></i> Форматировать схему
         </button>
       </div>
       <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>

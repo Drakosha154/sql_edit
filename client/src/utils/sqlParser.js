@@ -7,11 +7,16 @@ export function parseSQL(sql) {
       }
   
   // Удаляем комментарии
-  const cleanedSQL = sql.replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '').trim();
+  let cleanedSQL = sql
+  .replace(/--.*$/gm, '')  // Удаляем однострочные комментарии
+  .replace(/\/\*[\s\S]*?\*\//g, '')  // Удаляем многострочные комментарии
+  .replace(/,\s*FOREIGN\s+KEY/gi, ',\nFOREIGN KEY')  // ✅ НОВОЕ: Разделяем FOREIGN KEY на новые строки
+  .replace(/\)\s*;?\s*CREATE/gi, ');\nCREATE')  // ✅ НОВОЕ: Разделяем CREATE TABLE
+  .trim();
   
   // Упрощенные регулярные выражения
-  const createTableRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\(((?:[^()]|\([^()]*\))*)\)\s*;?/gi;
-  const columnRegex = /(\w+)\s+([\w\(\)]+)(?:\s+(.*))?/i;
+  const createTableRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\(([\s\S]*?)\);/gi;
+  const columnRegex = /(\w+)\s+([\w]+(?:\s*\([^)]*\))?)\s*(.*)?/i;
   // Исправлено: учитываем возможные опции после REFERENCES
   const referenceRegex = /REFERENCES\s+(\w+)\s*\((\w+)\)(?:\s+(?:ON\s+(?:DELETE|UPDATE)\s+(?:CASCADE|SET NULL|SET DEFAULT|RESTRICT|NO ACTION)))*/i;
   const constraintRegex = /CONSTRAINT\s+\w+\s+FOREIGN\s+KEY\s*\(([^)]+)\)\s*REFERENCES\s+(\w+)\s*\(([^)]+)\)(?:\s+(?:ON\s+(?:DELETE|UPDATE)\s+(?:CASCADE|SET NULL|SET DEFAULT|RESTRICT|NO ACTION)))*/i;
@@ -22,9 +27,10 @@ export function parseSQL(sql) {
     const tableName = tableMatch[1];
     const columnsDef = tableMatch[2];
     const columns = [];
-    const lines = columnsDef.split('\n')
-      .map(line => line.trim())
-      .filter(line => line && !line.startsWith('--'));
+    const lines = columnsDef
+  .split(/,(?![^()]*\))/)  // ✅ Разделяем по запятым, НЕ внутри скобок
+  .map(line => line.trim())
+  .filter(line => line && !line.startsWith('--'));
     
     for (const line of lines) {
       // Пропускаем CONSTRAINT (обрабатываем отдельно)
@@ -37,10 +43,10 @@ export function parseSQL(sql) {
           
           fromColumns.forEach((col, i) => {
             foreignKeys.push({
-              fromTable: tableName,
-              fromColumn: col,
-              toTable,
-              toColumn: toColumns[i]
+              fromTable: toTable, 
+              fromColumn: toColumns[i],
+              toTable: tableName,
+              toColumn: col 
             });
 
             // ИЗМЕНЕНИЕ: Помечаем колонку как foreign key в таблице
@@ -52,6 +58,33 @@ export function parseSQL(sql) {
         }
         continue;
       }
+
+      // НОВОЕ: Пропускаем FOREIGN KEY без CONSTRAINT
+  if (line.startsWith('FOREIGN KEY') || line.match(/^\s*FOREIGN\s+KEY/i)) {
+    const fkRegex = /FOREIGN\s+KEY\s*\(([^)]+)\)\s*REFERENCES\s+(\w+)\s*\(([^)]+)\)/i;
+    const fkMatch = fkRegex.exec(line);
+    if (fkMatch) {
+      const fromColumns = fkMatch[1].split(',').map(c => c.trim());
+      const toTable = fkMatch[2];
+      const toColumns = fkMatch[3].split(',').map(c => c.trim());
+      
+      fromColumns.forEach((col, i) => {
+        foreignKeys.push({
+          fromTable: toTable,
+          fromColumn: toColumns[i],
+          toTable: tableName,
+          toColumn: col
+        });
+        
+        const column = columns.find(c => c.name === col);
+        if (column) {
+          column.isForeignKey = true;
+        }
+      });
+    }
+    continue;
+  }
+
       const colMatch = columnRegex.exec(line);
       if (colMatch) {
         const colName = colMatch[1];
@@ -74,13 +107,19 @@ export function parseSQL(sql) {
           });
           isForeignKey = true;
         }
+
+const isAutoIncrement = constraints.includes('AUTO_INCREMENT') || 
+                        constraints.includes('AUTOINCREMENT') ||
+                        constraints.includes('auto_increment')  ||
+                        colType.toUpperCase().includes('SERIAL');;
         
         columns.push({
           name: colName,
           type: colType,
           isPrimary,
           isNullable,
-          isForeignKey
+          isForeignKey,
+          isAutoIncrement
         });
       }
     }

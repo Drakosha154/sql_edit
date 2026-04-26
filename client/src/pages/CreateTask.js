@@ -6,7 +6,7 @@ import ReactFlow, {
   applyEdgeChanges,
   applyNodeChanges,
   MiniMap,
-  Position,
+  Position
 } from 'reactflow';
 
 import 'reactflow/dist/style.css';
@@ -19,6 +19,7 @@ import {
   InputGroup, 
   Container,
   Card,
+  Alert, 
   Badge
 } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
@@ -90,6 +91,8 @@ export default function CreateTask() {
   const [databaseName, setDatabaseName] = useState([]);
   const [databaseId, setDatabaseId] = useState('');
   const [sqlQuery, setSqlQuery] = useState('');
+  const [generatedResults, setGeneratedResults] = useState(null);
+const [isGenerating, setIsGenerating] = useState(false);
 
 
   const { id } = useParams();
@@ -262,6 +265,11 @@ const handleDatabaseSelect = (database) => {
     return edge;
   }));
 }, []);
+
+const handleResultsGenerated = (generatedData) => {
+  setGeneratedResults(generatedData);
+  console.log('Ожидаемые результаты сформированы:', generatedData);
+};
 
 const updateEdgesOnNodeRename = useCallback((oldNodeId, newNodeId, newLabel) => {
   setEdges(eds => eds.map(edge => {
@@ -518,6 +526,53 @@ const generateDataInsertSQL = (nodes, tableData, options = {}) => {
   return sqlCodeInsert;
 }
 
+// Функция автоматического формирования ожидаемых результатов
+const handleGenerateResults = async () => {
+  if (!sqlQuery || !databaseId) {
+    alert('Пожалуйста, выберите базу данных и напишите SQL запрос');
+    return;
+  }
+
+  setIsGenerating(true);
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/generate-expected-results`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({
+        database_id: parseInt(databaseId),
+        sql_query: sqlQuery
+      })
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || data.details || 'Ошибка формирования результатов');
+    }
+
+    setGeneratedResults(data);
+    setResult(data.main_result);
+    
+    // Устанавливаем колонки из результата
+    if (data.main_result && data.main_result.length > 0) {
+      const columns = Object.keys(data.main_result[0]);
+      setSelectedColumns(columns);
+    }
+    
+    alert(`Результаты успешно сформированы!\nОсновной тест + ${data.test_count} проверочных тестов`);
+    
+  } catch (error) {
+    console.error('Ошибка формирования результатов:', error);
+    alert(`Ошибка: ${error.message}`);
+  } finally {
+    setIsGenerating(false);
+  }
+};
+
 // Вспомогательные функции для определения типов
 const isTextType = (type) => {
   if (!type) return false;
@@ -563,7 +618,7 @@ const DatabaseModal = ({ show, onHide, databases, onSelect, loading }) => {
       size="lg"
       centered
     >
-      <Modal.Header closeButton className="bg-dark">
+      <Modal.Header closeButton className="">
         <Modal.Title>
           <i className="bi bi-database me-2"></i>
           Выберите базу данных
@@ -635,7 +690,7 @@ const DatabaseModal = ({ show, onHide, databases, onSelect, loading }) => {
         </div>
       </Modal.Body>
       
-      <Modal.Footer className="bg-dark">
+      <Modal.Footer className="   ">
         <Button variant="secondary" onClick={onHide}>
           Отмена
         </Button>
@@ -832,7 +887,7 @@ const parseInsertSQL = (sql) => {
         if (columns.length === values.length) {
           const row = {};
           columns.forEach((col, i) => {
-            if (col) { // Проверяем, что имя колонки не пустое
+if (col) {
               row[col] = values[i];
             }
           });
@@ -885,13 +940,14 @@ const parseInsertSQL = (sql) => {
 
     <div class='erd-container d-flex flex-column vh-100'>
     <div class='p-2 border-bottom d-flex'>
-    <TaskSaveButton
-      databaseId={databaseId}
-      taskDescription={taskDescription}
-      result={result}
-      setCsvDecision={setCsvDecision}
-      sqlQuery={sqlQuery}
-    />
+<TaskSaveButton
+  databaseId={databaseId}
+  taskDescription={taskDescription}
+  result={result}
+  setCsvDecision={setCsvDecision}
+  sqlQuery={sqlQuery}
+  generatedResults={generatedResults}
+/>
     <div class="ms-3 p-2 border rounded">
       Выбрана база данных: {selectedDatabase ? selectedDatabase : 'не выбрана'}
     </div>
@@ -915,17 +971,19 @@ const parseInsertSQL = (sql) => {
 
       <Tab.Content className="d-flex w-100 h-100 overflow-auto">
         <Tab.Pane className="d-flex w-100 h-100" eventKey="solution">
-          <SolutionView 
-            nodes={nodes}
-            edges={edges}
-            tableData={tableData}
-            setResult={setResult}
-            result={result}
-            setSelectedColumns={setSelectedColumns}
-            selectedColumns={selectedColumns}
-            sqlQuery={sqlQuery}
-            setSqlQuery={setSqlQuery}
-          />
+<SolutionView
+  nodes={nodes}
+  edges={edges}
+  tableData={tableData}
+  setResult={setResult}
+  result={result}
+  selectedColumns={selectedColumns}
+  setSelectedColumns={setSelectedColumns}
+  sqlQuery={sqlQuery}
+  setSqlQuery={setSqlQuery}
+  databaseId={databaseId}
+  onResultsGenerated={handleResultsGenerated} // 🆕 ДОБАВИТЬ
+/>
         </Tab.Pane>
 
         <Tab.Pane className="d-flex w-100 h-100" eventKey="task" forceMount={activeTab !== "task"}>

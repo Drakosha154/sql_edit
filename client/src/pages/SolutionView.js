@@ -26,7 +26,9 @@ const SolutionView = ({
   selectedColumns, 
   setSelectedColumns,
   sqlQuery,
-  setSqlQuery
+  setSqlQuery,
+  databaseId,
+  onResultsGenerated // 🆕 ДОБАВИТЬ этот prop
 }) => {
   const [selectedTable, setSelectedTable] = useState('');
   const [selectedJoinTable, setSelectedJoinTable] = useState('');
@@ -62,68 +64,81 @@ const SolutionView = ({
   }, [tableData]);
 
   // Функция для выполнения JOIN
-  const performJoin = (mainTableData, joinTableData, joinCondition) => {
-    if (!mainTableData || !joinTableData || !joinCondition) {
-      return mainTableData || [];
-    }
+//   const performJoin = (mainTableData, joinTableData, joinCondition, tableInfo) => {
+//     if (!mainTableData || !joinTableData || !joinCondition) {
+//         return mainTableData || [];
+//     }
     
-    const result = [];
+//     const result = [];
     
-    mainTableData.forEach(mainRow => {
-      joinTableData.forEach(joinRow => {
-        // Проверяем условие JOIN
-        let shouldJoin = true;
-        
-        // Парсим условие JOIN (например: "books.author_id = authors.author_id")
-        const parts = joinCondition.toLowerCase().split('=');
-        if (parts.length === 2) {
-          const leftPart = parts[0].trim();
-          const rightPart = parts[1].trim();
-          
-          // Извлекаем имена таблиц и столбцов
-          const leftMatch = leftPart.match(/(\w+)\.(\w+)/);
-          const rightMatch = rightPart.match(/(\w+)\.(\w+)/);
-          
-          if (leftMatch && rightMatch) {
-            const leftTable = leftMatch[1];
-            const leftColumn = leftMatch[2];
-            const rightTable = rightMatch[1];
-            const rightColumn = rightMatch[2];
+//     mainTableData.forEach(mainRow => {
+//         joinTableData.forEach(joinRow => {
+//             let shouldJoin = true;
             
-            // Определяем, какая таблица main, а какая join
-            let mainValue, joinValue;
+//             // Парсим условие JOIN (например: "s.department_id = d.department_id")
+//             const parts = joinCondition.trim().split('=');
+//             if (parts.length === 2) {
+//                 const leftPart = parts[0].trim();
+//                 const rightPart = parts[1].trim();
+                
+//                 // Извлекаем имена таблиц и столбцов
+//                 const leftMatch = leftPart.match(/(\w+)\.(\w+)/);
+//                 const rightMatch = rightPart.match(/(\w+)\.(\w+)/);
+                
+//                 if (leftMatch && rightMatch) {
+//                     const leftTableOrAlias = leftMatch[1];
+//                     const leftColumn = leftMatch[2];
+//                     const rightTableOrAlias = rightMatch[1];
+//                     const rightColumn = rightMatch[2];
+                    
+//                     // Определяем, какая таблица main, а какая join по алиасам
+//                     let mainValue, joinValue;
+                    
+//                     // Проверяем по алиасам
+//                     if ((leftTableOrAlias === tableInfo.mainAlias || leftTableOrAlias === tableInfo.mainTable) &&
+//                         (rightTableOrAlias === tableInfo.joinAlias || rightTableOrAlias === tableInfo.joinTable)) {
+//                         mainValue = mainRow[leftColumn];
+//                         joinValue = joinRow[rightColumn];
+//                     } else if ((rightTableOrAlias === tableInfo.mainAlias || rightTableOrAlias === tableInfo.mainTable) &&
+//                                (leftTableOrAlias === tableInfo.joinAlias || leftTableOrAlias === tableInfo.joinTable)) {
+//                         mainValue = mainRow[rightColumn];
+//                         joinValue = joinRow[leftColumn];
+//                     } else {
+//                         // Fallback: пробуем найти по именам столбцов
+//                         mainValue = mainRow[leftColumn] || mainRow[rightColumn];
+//                         joinValue = joinRow[rightColumn] || joinRow[leftColumn];
+//                     }
+                    
+//                     shouldJoin = mainValue == joinValue;
+//                 } else {
+//                     // Если нет префиксов таблиц
+//                     const leftColumn = leftPart;
+//                     const rightColumn = rightPart;
+//                     shouldJoin = mainRow[leftColumn] == joinRow[rightColumn];
+//                 }
+//             }
             
-            if (leftTable === selectedTable.toLowerCase() && rightTable === selectedJoinTable.toLowerCase()) {
-              mainValue = mainRow[leftColumn];
-              joinValue = joinRow[rightColumn];
-            } else if (rightTable === selectedTable.toLowerCase() && leftTable === selectedJoinTable.toLowerCase()) {
-              mainValue = mainRow[rightColumn];
-              joinValue = joinRow[leftColumn];
-            } else {
-              // Если таблицы не совпадают, пробуем найти по именам столбцов
-              mainValue = mainRow[leftColumn] || mainRow[rightColumn];
-              joinValue = joinRow[rightColumn] || joinRow[leftColumn];
-            }
-            
-            shouldJoin = mainValue == joinValue;
-          } else {
-            // Если нет префиксов таблиц, ищем столбцы напрямую
-            const leftColumn = leftPart;
-            const rightColumn = rightPart;
-            shouldJoin = mainRow[leftColumn] == joinRow[rightColumn];
-          }
-        }
-        
-        if (shouldJoin) {
-          // Объединяем строки
-          const joinedRow = { ...mainRow, ...joinRow };
-          result.push(joinedRow);
-        }
-      });
-    });
+//             if (shouldJoin) {
+//                 // Объединяем строки с префиксами для избежания конфликтов
+//                 const joinedRow = { ...mainRow };
+                
+//                 // Добавляем колонки из joinRow с проверкой на конфликты
+//                 Object.keys(joinRow).forEach(key => {
+//                     // Если ключ уже существует, добавляем префикс таблицы
+//                     if (key in joinedRow && joinedRow[key] !== joinRow[key]) {
+//                         joinedRow[`${tableInfo.joinTable}_${key}`] = joinRow[key];
+//                     } else {
+//                         joinedRow[key] = joinRow[key];
+//                     }
+//                 });
+                
+//                 result.push(joinedRow);
+//             }
+//         });
+//     });
     
-    return result;
-  };
+//     return result;
+// };
 
   // Генерация SQL
   const generateSQL = () => {
@@ -171,7 +186,7 @@ const SolutionView = ({
     return sql;
   };
 
-  // Выполнение запроса
+  // Выполнение запроса через backend
 const executeQuery = async (customSQL = null) => {
     let sqlToExecute = customSQL || generateSQL();
     if (!sqlToExecute) return;
@@ -180,314 +195,248 @@ const executeQuery = async (customSQL = null) => {
     setSqlError(null);
     
     try {
-        // Парсим SQL
-        const sqlUpper = sqlToExecute.toUpperCase();
-        const fromMatch = sqlToExecute.match(/FROM\s+(\w+)/i);
+        const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
         
-        if (!fromMatch) {
-            throw new Error('Неверный SQL: отсутствует FROM');
+        // 1. Выполняем SQL для отображения результата
+        const response = await fetch(`${API_BASE_URL}/api/execute-final-solution`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+                database_id: databaseId,
+                sql_query: sqlToExecute,
+                test_index: 0
+            })
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || data.details || 'Ошибка выполнения запроса');
+        }
+
+        // Обновляем результат для отображения
+        if (data.result && data.result.length > 0) {
+            const columns = Object.keys(data.result[0]);
+            setSelectedColumns(columns);
+            setResult(data.result);
+        } else {
+            setSelectedColumns([]);
+            setResult([]);
         }
         
-        const mainTable = fromMatch[1];
+        setExecutionCount(prev => prev + 1);
         
-        // Получаем данные основной таблицы
-        let mainData = allTableData[mainTable] || [];
-        
-        // Проверяем JOIN
-        const joinMatch = sqlToExecute.match(/JOIN\s+(\w+)\s+ON\s+([^;]+)/i);
-        
-        if (joinMatch) {
-            const joinTable = joinMatch[1];
-            const joinCondition = joinMatch[2];
-            
-            // Получаем данные таблицы для JOIN
-            const joinData = allTableData[joinTable] || [];
-            
-            // Выполняем JOIN
-            mainData = performJoin(mainData, joinData, joinCondition);
-        }
-        
-        // Определяем столбцы для выборки
-        const selectMatch = sqlToExecute.match(/SELECT\s+(.+?)\s+FROM/i);
-        let columnsToSelect = [];
-        const aliases = {};
-        
-        if (selectMatch) {
-            const columnsPart = selectMatch[1].trim();
-            
-            if (columnsPart === '*') {
-                // Если SELECT * и был JOIN
-                if (mainData.length > 0) {
-                    columnsToSelect = Object.keys(mainData[0]);
-                }
-            } else {
-                // Парсим отдельные колонки
-                const columnItems = columnsPart.split(',').map(item => item.trim());
-                
-                columnItems.forEach(item => {
-                    // Проверяем AS
-                    const asMatch = item.match(/(.+?)\s+AS\s+(.+)/i);
-                    if (asMatch) {
-                        const original = asMatch[1].trim();
-                        const alias = asMatch[2].trim();
-                        
-                        // Убираем префикс таблицы если есть
-                        const columnName = original.includes('.') 
-                            ? original.split('.')[1] 
-                            : original;
-                        
-                        columnsToSelect.push(columnName);
-                        aliases[columnName] = alias;
-                    } else {
-                        // Без AS
-                        const columnName = item.includes('.') 
-                            ? item.split('.')[1] 
-                            : item;
-                        
-                        columnsToSelect.push(columnName);
-                    }
+        // 2. 🆕 АВТОМАТИЧЕСКИ формируем ожидаемые результаты для всех тестов
+        if (onResultsGenerated && databaseId) {
+            try {
+                const generateResponse = await fetch(`${API_BASE_URL}/api/generate-expected-results`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({
+                        database_id: databaseId,
+                        sql_query: sqlToExecute
+                    })
                 });
+
+                if (generateResponse.ok) {
+                    const generatedData = await generateResponse.json();
+                    // Передаем результаты в родительский компонент
+                    onResultsGenerated(generatedData);
+                }
+            } catch (genError) {
+                console.warn('Не удалось сформировать ожидаемые результаты:', genError);
+                // Не показываем ошибку пользователю, это фоновая операция
             }
         }
         
-        // Применяем WHERE условия
-        const whereMatch = sqlToExecute.match(/WHERE\s+(.+?)(?:\s+(ORDER\s+BY|GROUP\s+BY|HAVING|LIMIT)|\s*$)/i);
-        if (whereMatch) {
-            const whereClause = whereMatch[1].trim();
-            mainData = applyWhereClause(mainData, whereClause);
-        }
-        
-        // Применяем ORDER BY (используем отдельную регулярку)
-        const orderMatch = sqlToExecute.match(/ORDER\s+BY\s+(.+?)(?:\s+(ASC|DESC))?(?:\s+(?:LIMIT|GROUP\s+BY|HAVING)|\s*$)/i);
-        if (orderMatch) {
-            const orderClause = orderMatch[1].trim();
-            const sortDirection = (orderMatch[2] || 'ASC').toUpperCase();
-            
-            // Парсим столбец для сортировки (убираем префикс таблицы если есть)
-            const sortColumn = orderClause.includes('.') 
-                ? orderClause.split('.')[1] 
-                : orderClause;
-            
-            mainData.sort((a, b) => {
-                const aVal = a[sortColumn];
-                const bVal = b[sortColumn];
-                
-                // Обработка null/undefined значений
-                if (aVal == null && bVal == null) return 0;
-                if (aVal == null) return sortDirection === 'ASC' ? -1 : 1;
-                if (bVal == null) return sortDirection === 'ASC' ? 1 : -1;
-                
-                // Сравнение значений
-                if (typeof aVal === 'number' && typeof bVal === 'number') {
-                    return sortDirection === 'DESC' 
-                        ? bVal - aVal 
-                        : aVal - bVal;
-                }
-                
-                // Для строк
-                const comparison = String(aVal).localeCompare(String(bVal));
-                return sortDirection === 'DESC' ? -comparison : comparison;
-            });
-        }
-        
-        // Формируем финальный результат
-        const resultData = mainData.map(row => {
-            const resultRow = {};
-            columnsToSelect.forEach(col => {
-                const alias = aliases[col] || col;
-                resultRow[alias] = row[col];
-            });
-            return resultRow;
-        });
-        
-        // Обновляем состояние
-        const resultColumns = columnsToSelect.map(col => aliases[col] || col);
-        setSelectedColumns(resultColumns);
-        setResult(resultData);
-        setExecutionCount(prev => prev + 1);
-        
     } catch (error) {
         console.error("Ошибка выполнения SQL:", error);
-        setSqlError(`Ошибка: ${error.message}\n\nПроверьте:\n1. Правильность имен таблиц\n2. Наличие данных в таблицах\n3. Правильность JOIN условий`);
+        setSqlError(`Ошибка: ${error.message}\n\nПроверьте:\n1. Правильность SQL синтаксиса\n2. Наличие данных в таблицах\n3. Правильность имен таблиц и столбцов`);
     } finally {
         setIsExecuting(false);
     }
 };
 
 // Новая функция для применения WHERE условий
-const applyWhereClause = (data, whereClause) => {
+// const applyWhereClause = (data, whereClause) => {
 
-    if (!whereClause || !data.length) return data;
+//     if (!whereClause || !data.length) return data;
     
-    // Регулярки для разных операторов сравнения
-    const conditions = [];
+//     // Регулярки для разных операторов сравнения
+//     const conditions = [];
     
-    // Разбиваем на отдельные условия по AND (упрощенно)
-    const andConditions = whereClause.split(/\s+AND\s+/i);
+//     // Разбиваем на отдельные условия по AND (упрощенно)
+//     const andConditions = whereClause.split(/\s+AND\s+/i);
     
-    andConditions.forEach(condition => {
-        // Ищем операторы сравнения: =, !=, <>, >, <, >=, <=
-        const operatorMatch = condition.match(/(\w+)\s*(=|!=|<>|>|<|>=|<=)\s*(['"][^'"]*['"]|\d+|\w+)/i);
+//     andConditions.forEach(condition => {
+//         // Ищем операторы сравнения: =, !=, <>, >, <, >=, <=
+//         const operatorMatch = condition.match(/(\w+)\s*(=|!=|<>|>|<|>=|<=)\s*(['"][^'"]*['"]|\d+|\w+)/i);
 
-          if (!operatorMatch) {
-            console.log('sql для вставки данных пуст');
-            return;
-        }
+//           if (!operatorMatch) {
+//             console.log('sql для вставки данных пуст');
+//             return;
+//         }
         
-        if (operatorMatch) {
-            const column = operatorMatch[1].trim();
-            const operator = operatorMatch[2].trim();
-            let value = operatorMatch[3].trim();
+//         if (operatorMatch) {
+//             const column = operatorMatch[1].trim();
+//             const operator = operatorMatch[2].trim();
+//             let value = operatorMatch[3].trim();
             
-            // Убираем кавычки если это строка
-            if ((value.startsWith("'") && value.endsWith("'")) || 
-                (value.startsWith('"') && value.endsWith('"'))) {
-                value = value.substring(1, value.length - 1);
-            }
+//             // Убираем кавычки если это строка
+//             if ((value.startsWith("'") && value.endsWith("'")) || 
+//                 (value.startsWith('"') && value.endsWith('"'))) {
+//                 value = value.substring(1, value.length - 1);
+//             }
             
-            // Преобразуем в число если возможно
-            const numericValue = !isNaN(value) && value !== '' ? Number(value) : null;
-            const isNumericComparison = numericValue !== null;
+//             // Преобразуем в число если возможно
+//             const numericValue = !isNaN(value) && value !== '' ? Number(value) : null;
+//             const isNumericComparison = numericValue !== null;
             
-            conditions.push({
-                column,
-                operator: operator.toUpperCase(),
-                value: isNumericComparison ? numericValue : value,
-                isNumeric: isNumericComparison
-            });
-        } else {
-            // Для простых условий с AND без операторов
-            const simpleMatch = condition.match(/(\w+)\s*=\s*(['"][^'"]*['"]|\d+|\w+)/i);
-            if (simpleMatch) {
-                const column = simpleMatch[1].trim();
-                let value = simpleMatch[2].trim();
+//             conditions.push({
+//                 column,
+//                 operator: operator.toUpperCase(),
+//                 value: isNumericComparison ? numericValue : value,
+//                 isNumeric: isNumericComparison
+//             });
+//         } else {
+//             // Для простых условий с AND без операторов
+//             const simpleMatch = condition.match(/(\w+)\s*=\s*(['"][^'"]*['"]|\d+|\w+)/i);
+//             if (simpleMatch) {
+//                 const column = simpleMatch[1].trim();
+//                 let value = simpleMatch[2].trim();
                 
-                if ((value.startsWith("'") && value.endsWith("'")) || 
-                    (value.startsWith('"') && value.endsWith('"'))) {
-                    value = value.substring(1, value.length - 1);
-                }
+//                 if ((value.startsWith("'") && value.endsWith("'")) || 
+//                     (value.startsWith('"') && value.endsWith('"'))) {
+//                     value = value.substring(1, value.length - 1);
+//                 }
                 
-                conditions.push({
-                    column,
-                    operator: '=',
-                    value,
-                    isNumeric: !isNaN(value) && value !== ''
-                });
-            }
-        }
-    });
+//                 conditions.push({
+//                     column,
+//                     operator: '=',
+//                     value,
+//                     isNumeric: !isNaN(value) && value !== ''
+//                 });
+//             }
+//         }
+//     });
     
-    // Фильтруем данные по всем условиям
-    return data.filter(row => {
-        return conditions.every(cond => {
-            const rowValue = row[cond.column];
+//     // Фильтруем данные по всем условиям
+//     return data.filter(row => {
+//         return conditions.every(cond => {
+//             const rowValue = row[cond.column];
             
-            // Если значение в строке не определено
-            if (rowValue === undefined || rowValue === null) {
-                return false;
-            }
+//             // Если значение в строке не определено
+//             if (rowValue === undefined || rowValue === null) {
+//                 return false;
+//             }
             
-            // Приводим к правильному типу для сравнения
-            const compareValue = cond.isNumeric ? 
-                (typeof rowValue === 'number' ? rowValue : Number(rowValue)) : 
-                String(rowValue);
-            const conditionValue = cond.value;
+//             // Приводим к правильному типу для сравнения
+//             const compareValue = cond.isNumeric ? 
+//                 (typeof rowValue === 'number' ? rowValue : Number(rowValue)) : 
+//                 String(rowValue);
+//             const conditionValue = cond.value;
             
-            // Выполняем сравнение в зависимости от оператора
-            switch (cond.operator) {
-                case '=':
-                    return compareValue == conditionValue;
+//             // Выполняем сравнение в зависимости от оператора
+//             switch (cond.operator) {
+//                 case '=':
+//                     return compareValue == conditionValue;
                 
-                case '!=':
-                case '<>':
-                    return compareValue != conditionValue;
+//                 case '!=':
+//                 case '<>':
+//                     return compareValue != conditionValue;
                 
-                case '>':
-                    if (!cond.isNumeric) {
-                        console.warn(`Оператор > применен к нечисловым данным: ${cond.column}`);
-                        return false;
-                    }
-                    return compareValue > conditionValue;
+//                 case '>':
+//                     if (!cond.isNumeric) {
+//                         console.warn(`Оператор > применен к нечисловым данным: ${cond.column}`);
+//                         return false;
+//                     }
+//                     return compareValue > conditionValue;
                 
-                case '<':
-                    if (!cond.isNumeric) {
-                        console.warn(`Оператор < применен к нечисловым данным: ${cond.column}`);
-                        return false;
-                    }
-                    return compareValue < conditionValue;
+//                 case '<':
+//                     if (!cond.isNumeric) {
+//                         console.warn(`Оператор < применен к нечисловым данным: ${cond.column}`);
+//                         return false;
+//                     }
+//                     return compareValue < conditionValue;
                 
-                case '>=':
-                    if (!cond.isNumeric) {
-                        console.warn(`Оператор >= применен к нечисловым данным: ${cond.column}`);
-                        return false;
-                    }
-                    return compareValue >= conditionValue;
+//                 case '>=':
+//                     if (!cond.isNumeric) {
+//                         console.warn(`Оператор >= применен к нечисловым данным: ${cond.column}`);
+//                         return false;
+//                     }
+//                     return compareValue >= conditionValue;
                 
-                case '<=':
-                    if (!cond.isNumeric) {
-                        console.warn(`Оператор <= применен к нечисловым данным: ${cond.column}`);
-                        return false;
-                    }
-                    return compareValue <= conditionValue;
+//                 case '<=':
+//                     if (!cond.isNumeric) {
+//                         console.warn(`Оператор <= применен к нечисловым данным: ${cond.column}`);
+//                         return false;
+//                     }
+//                     return compareValue <= conditionValue;
                 
-                default:
-                    console.warn(`Неизвестный оператор: ${cond.operator}`);
-                    return false;
-            }
-        });
-    });
-};
+//                 default:
+//                     console.warn(`Неизвестный оператор: ${cond.operator}`);
+//                     return false;
+//             }
+//         });
+//     });
+// };
 
 // Вспомогательная функция для разбора сложных WHERE условий
-const parseWhereCondition = (conditionStr) => {
+// const parseWhereCondition = (conditionStr) => {
 
-  if (!conditionStr) {
-            console.log('sql для вставки данных пуст');
-            return;
-        }
+//   if (!conditionStr) {
+//             console.log('sql для вставки данных пуст');
+//             return;
+//         }
 
-    // Удаляем лишние пробелы
-    conditionStr = conditionStr.trim();
+//     // Удаляем лишние пробелы
+//     conditionStr = conditionStr.trim();
     
-    // Проверяем на наличие скобок для сложных условий
-    if (conditionStr.includes('(') || conditionStr.includes('OR')) {
-        console.warn('Сложные условия с OR и скобками не поддерживаются в этой версии');
-        return [];
-    }
+//     // Проверяем на наличие скобок для сложных условий
+//     if (conditionStr.includes('(') || conditionStr.includes('OR')) {
+//         console.warn('Сложные условия с OR и скобками не поддерживаются в этой версии');
+//         return [];
+//     }
     
-    // Парсим простые условия
-    const conditions = [];
+//     // Парсим простые условия
+//     const conditions = [];
     
-    // Регулярка для условий
-    const pattern = /(\w+)\s*(=|!=|<>|>|<|>=|<=)\s*(['"][^'"]*['"]|\d+(?:\.\d+)?|\w+)/gi;
-    let match;
+//     // Регулярка для условий
+//     const pattern = /(\w+)\s*(=|!=|<>|>|<|>=|<=)\s*(['"][^'"]*['"]|\d+(?:\.\d+)?|\w+)/gi;
+//     let match;
     
-    while ((match = pattern.exec(conditionStr)) !== null) {
-        const column = match[1].trim();
-        const operator = match[2].trim().toUpperCase();
-        let value = match[3].trim();
+//     while ((match = pattern.exec(conditionStr)) !== null) {
+//         const column = match[1].trim();
+//         const operator = match[2].trim().toUpperCase();
+//         let value = match[3].trim();
         
-        // Обработка значений в кавычках
-        if ((value.startsWith("'") && value.endsWith("'")) || 
-            (value.startsWith('"') && value.endsWith('"'))) {
-            value = value.substring(1, value.length - 1);
-        }
+//         // Обработка значений в кавычках
+//         if ((value.startsWith("'") && value.endsWith("'")) || 
+//             (value.startsWith('"') && value.endsWith('"'))) {
+//             value = value.substring(1, value.length - 1);
+//         }
         
-        // Определяем тип значения
-        const isNumeric = !isNaN(value) && value !== '';
-        const parsedValue = isNumeric ? Number(value) : value;
+//         // Определяем тип значения
+//         const isNumeric = !isNaN(value) && value !== '';
+//         const parsedValue = isNumeric ? Number(value) : value;
         
-        conditions.push({
-            column,
-            operator,
-            value: parsedValue,
-            isNumeric,
-            original: match[0]
-        });
-    }
+//         conditions.push({
+//             column,
+//             operator,
+//             value: parsedValue,
+//             isNumeric,
+//             original: match[0]
+//         });
+//     }
     
-    return conditions;
-};
+//     return conditions;
+// };
 
   // Вставка примера
   const insertTaskExample = (taskNumber) => {
@@ -794,17 +743,6 @@ WHERE book_loans.loan_date > '2024-02-01' AND book_loans.return_date IS NULL`
                       ) : (
                         'Выполнить SQL'
                       )}
-                    </Button>
-                    
-                    <Button 
-                      variant="outline-info" 
-                      onClick={() => {
-                        setSqlQuery(generateSQL());
-                      }}
-                      disabled={!selectedTable}
-                      size="sm"
-                    >
-                      Из конструктора
                     </Button>
                   </div>
                 </>

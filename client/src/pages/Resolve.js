@@ -868,6 +868,45 @@ export default function Resolve() {
                         )}
                       </div>
                     )}
+                    {/* Дополнительные тесты (если есть) */}
+{resultSolution.additional_tests && resultSolution.additional_tests.length > 0 && (
+  <Card className="mt-3">
+    <Card.Header className="bg-light">
+      <h6 className="mb-0">
+        <i className="bi bi-list-check me-2"></i>
+        Дополнительные проверочные тесты
+      </h6>
+    </Card.Header>
+    <Card.Body>
+      {resultSolution.additional_tests.map((test, index) => (
+        <Alert 
+          key={index} 
+          variant={test.success ? "success" : "danger"}
+          className="mb-2 d-flex align-items-center"
+        >
+          <div className="flex-grow-1">
+            <strong>
+              {test.success ? (
+                <i className="bi bi-check-circle-fill me-2"></i>
+              ) : (
+                <i className="bi bi-x-circle-fill me-2"></i>
+              )}
+              {test.name}
+            </strong>
+            <div className="mt-1 small">{test.message}</div>
+          </div>
+        </Alert>
+      ))}
+      
+      {resultSolution.additional_tests.every(test => test.success) && (
+        <Alert variant="info" className="mb-0 mt-2">
+          <i className="bi bi-info-circle me-2"></i>
+          Все дополнительные тесты пройдены успешно!
+        </Alert>
+      )}
+    </Card.Body>
+  </Card>
+)}
                   </div>
                 )}
               </Card.Body>

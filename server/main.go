@@ -5,6 +5,7 @@ import (
 	"log"
 	"sql_edit/database"
 	"sql_edit/middleware"
+	"sql_edit/migrations"
 	"sql_edit/routes"
 	"time"
 
@@ -33,6 +34,11 @@ func main() {
 		log.Fatalf("Ошибка подключения к БД: %v", err)
 	}
 	defer database.CloseDB()
+
+	// Выполняем миграцию для добавления новых полей
+	if err := migrations.AddTestDataSetsFields(database.DB); err != nil {
+		log.Printf("⚠️ Предупреждение: ошибка миграции: %v", err)
+	}
 
 	// Настройка роутера
 	r := gin.Default()
@@ -75,9 +81,10 @@ func main() {
 
 		//решение задания
 		authGroup.POST("/check-solution", routes.CheckSolutionWithSchema)
+		authGroup.POST("/execute-final-solution", routes.ExecuteFinalSolution)
+		authGroup.POST("/generate-expected-results", routes.GenerateExpectedResults)
 		authGroup.GET("/get-solution", routes.GetSolutionTaskProfile)
 		authGroup.GET("/get-solution/:id", routes.GetSolutionTask)
-		
 
 		// Профиль пользователя
 		authGroup.GET("/profile/me", routes.GetMyProfile)
@@ -90,15 +97,15 @@ func main() {
 		authGroup.GET("/users/active", routes.GetUserStats)
 
 		adminGroup := authGroup.Group("/admin")
-    	adminGroup.Use(routes.AdminMiddleware())
-    	{
-        	adminGroup.GET("/stats", routes.GetAdminStats)
-        	adminGroup.GET("/users", routes.GetAllUsers)
-        	adminGroup.PATCH("/users/:id", routes.UpdateUser)
-        	adminGroup.DELETE("/users/:id", routes.DeleteUser)
-        	adminGroup.GET("/tasks", routes.GetAllTasks)
-        	adminGroup.DELETE("/tasks/:id", routes.DeleteTask)
-    	}
+		adminGroup.Use(routes.AdminMiddleware())
+		{
+			adminGroup.GET("/stats", routes.GetAdminStats)
+			adminGroup.GET("/users", routes.GetAllUsers)
+			adminGroup.PATCH("/users/:id", routes.UpdateUser)
+			adminGroup.DELETE("/users/:id", routes.DeleteUser)
+			adminGroup.GET("/tasks", routes.GetAllTasks)
+			adminGroup.DELETE("/tasks/:id", routes.DeleteTask)
+		}
 	}
 
 	// Выведите все зарегистрированные маршруты

@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sort"
 	"sql_edit/database"
 	"sql_edit/models"
 	"strconv"
@@ -110,11 +111,11 @@ func SaveTask(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 
 	var taskInput struct {
-		Name         string `json:"Name"`
-		Task       	 string `json:"Task"`
-		Decision 	 string `json:"Decision"`
-		Id_database  uint   `json: "Id_database"`
-		SqlQuery 	 string `json: "SqlQuery"`
+		Name        string `json:"Name"`
+		Task        string `json:"Task"`
+		Decision    string `json:"Decision"`
+		Id_database uint   `json: "Id_database"`
+		SqlQuery    string `json: "SqlQuery"`
 	}
 
 	if err := c.ShouldBindJSON(&taskInput); err != nil {
@@ -123,15 +124,15 @@ func SaveTask(c *gin.Context) {
 	}
 
 	task := models.Tasks_list{
-		ID_creator: userID,
-		Task_name: taskInput.Name,
-		Task_formulation: taskInput.Task,
+		ID_creator:        userID,
+		Task_name:         taskInput.Name,
+		Task_formulation:  taskInput.Task,
 		Database_decision: taskInput.Decision,
-		ID_database: taskInput.Id_database,
-		SqlQuery: taskInput.SqlQuery,
+		ID_database:       taskInput.Id_database,
+		SqlQuery:          taskInput.SqlQuery,
 	}
 
-		if err := database.DB.Create(&task).Error; err != nil {
+	if err := database.DB.Create(&task).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save database"})
 		return
 	}
@@ -247,6 +248,7 @@ func UpdDatabasesByID(c *gin.Context) {
 		SchemaInsert string `json:"SchemaInsert"`
 		Task         string `json:"Task"`
 		Decision     string `json:"Decision"`
+		TestDataSets string `json:"test_data_sets"` // 🆕 ДОБАВИТЬ
 	}
 
 	fmt.Println(updateData.Decision)
@@ -265,6 +267,7 @@ func UpdDatabasesByID(c *gin.Context) {
 	updates := models.Database_lists{
 		Database_create_text: updateData.Schema,
 		Database_insert_text: updateData.SchemaInsert,
+		TestDataSets:         updateData.TestDataSets, // 🆕 ДОБАВИТЬ
 	}
 
 	if err := database.DB.Model(&db).Updates(updates).Error; err != nil {
@@ -291,9 +294,10 @@ func UpdTasksByID(c *gin.Context) {
 	}
 
 	var updateData struct {
-		Task         string `json:"Task"`
-		Decision     string `json:"Decision"`
-		SqlQuery     string `json:"SqlQuery"`
+		Task            string `json:"Task"`
+		Decision        string `json:"Decision"`
+		SqlQuery        string `json:"SqlQuery"`
+		ExpectedResults string `json:"expected_results"` // 🆕 ДОБАВИТЬ
 	}
 
 	if err := c.ShouldBindJSON(&updateData); err != nil {
@@ -308,9 +312,10 @@ func UpdTasksByID(c *gin.Context) {
 	}
 
 	updates := models.Tasks_list{
-		Task_formulation: updateData.Task,
+		Task_formulation:  updateData.Task,
 		Database_decision: updateData.Decision,
-		SqlQuery: updateData.SqlQuery,
+		SqlQuery:          updateData.SqlQuery,
+		ExpectedResults:   updateData.ExpectedResults, // 🆕 ДОБАВИТЬ
 	}
 
 	if err := database.DB.Model(&task).Updates(updates).Error; err != nil {
@@ -393,9 +398,10 @@ type SolutionResult struct {
 	UserResult        []map[string]interface{} `json:"user_result"`
 	ExpectedResult    []map[string]interface{} `json:"expected_result"`
 	ExecutionTime     time.Duration            `json:"execution_time"`
-	IsSuspicious      bool                     `json:"is_suspicious"`       // Добавить это поле
-	SuspiciousReasons []string                 `json:"suspicious_reasons"`  // Добавить это поле
-	MetadataStats     map[string]interface{}   `json:"metadata_stats"`      // Добавить это поле
+	IsSuspicious      bool                     `json:"is_suspicious"`
+	SuspiciousReasons []string                 `json:"suspicious_reasons"`
+	MetadataStats     map[string]interface{}   `json:"metadata_stats"`
+	AdditionalTests   []TestResult             `json:"additional_tests,omitempty"` // 🆕 НОВОЕ ПОЛЕ
 }
 
 // CheckSolutionWithSchema обработчик с использованием схем
@@ -438,39 +444,39 @@ func CheckSolutionWithSchema(c *gin.Context) {
 	isSuspicious := false
 	var suspiciousReasons []string
 	var metadataStats = make(map[string]interface{})
-	
+
 	if request.Metadata != nil {
 		// Извлекаем метаданные
 		if copyCount, ok := request.Metadata["copyCount"].(float64); ok && copyCount > 0 {
 			isSuspicious = true
 			suspiciousReasons = append(suspiciousReasons, fmt.Sprintf("Обнаружены попытки копирования: %.0f", copyCount))
 		}
-		
+
 		if pasteCount, ok := request.Metadata["pasteCount"].(float64); ok && pasteCount > 0 {
 			isSuspicious = true
 			suspiciousReasons = append(suspiciousReasons, fmt.Sprintf("Обнаружены попытки вставки: %.0f", pasteCount))
 		}
-		
+
 		if isWindowActive, ok := request.Metadata["isWindowActive"].(bool); ok && !isWindowActive {
 			if timeSpent, ok := request.Metadata["timeSpent"].(float64); ok && timeSpent > 30 {
 				isSuspicious = true
-				suspiciousReasons = append(suspiciousReasons, 
+				suspiciousReasons = append(suspiciousReasons,
 					fmt.Sprintf("Окно было неактивно %.0f секунд", timeSpent))
 			}
 		}
-		
+
 		if tabSwitches, ok := request.Metadata["tabSwitches"].(float64); ok && tabSwitches > 5 {
 			isSuspicious = true
-			suspiciousReasons = append(suspiciousReasons, 
+			suspiciousReasons = append(suspiciousReasons,
 				fmt.Sprintf("Слишком много переключений вкладок: %.0f", tabSwitches))
 		}
-		
+
 		// Сохраняем статистику для ответа
 		metadataStats = map[string]interface{}{
-			"copyCount":   request.Metadata["copyCount"],
-			"pasteCount":  request.Metadata["pasteCount"],
-			"timeSpent":   request.Metadata["timeSpent"],
-			"tabSwitches": request.Metadata["tabSwitches"],
+			"copyCount":      request.Metadata["copyCount"],
+			"pasteCount":     request.Metadata["pasteCount"],
+			"timeSpent":      request.Metadata["timeSpent"],
+			"tabSwitches":    request.Metadata["tabSwitches"],
 			"isWindowActive": request.Metadata["isWindowActive"],
 		}
 	}
@@ -479,33 +485,33 @@ func CheckSolutionWithSchema(c *gin.Context) {
 	schemaName := generateSchemaName(userID, request.TaskID)
 
 	// Выполняем проверку в изолированной схеме
-	result, err := executeInSchema(schemaName, db_task.Database_create_text, db_task.Database_insert_text, request.SolutionSQL, task.Database_decision)
+	result, err := executeInSchemaWithMultipleTests(schemaName, db_task, task, request.SolutionSQL)
 	if err != nil {
 		// Логируем ошибку для отладки
 		log.Printf("Ошибка выполнения решения: %v", err)
 		log.Printf("Пользователь: %d, Задание: %d", userID, request.TaskID)
-		
+
 		// Сохраняем неудачную попытку в лог подозрительной активности
 		if len(suspiciousReasons) > 0 {
 			saveSuspiciousActivity(userID, request.TaskID, request.SolutionSQL, suspiciousReasons)
 		}
 
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Ошибка выполнения решения",
-			"details": err.Error(),
-			"is_suspicious": isSuspicious,
+			"error":              "Ошибка выполнения решения",
+			"details":            err.Error(),
+			"is_suspicious":      isSuspicious,
 			"suspicious_reasons": suspiciousReasons,
 		})
 		return
 	}
 
 	result.ExecutionTime = time.Since(startTime)
-	
+
 	// Добавляем метаданные к результату
 	result.IsSuspicious = isSuspicious
 	result.SuspiciousReasons = suspiciousReasons
 	result.MetadataStats = metadataStats
-	
+
 	// Формируем сообщение с учетом честности решения
 	result.Message = getSolutionMessage(result.Success, isSuspicious)
 
@@ -516,11 +522,11 @@ func CheckSolutionWithSchema(c *gin.Context) {
 		DecisionSQL: request.SolutionSQL,
 		IsCorrect:   result.Success,
 		// Сохраняем метаданные как JSON
-		Metadata:    convertMetadataToJSON(request.Metadata),
+		Metadata: convertMetadataToJSON(request.Metadata),
 		// Сохраняем IP адрес пользователя
-		IPAddress:   c.ClientIP(),
+		IPAddress: c.ClientIP(),
 		// Сохраняем User-Agent
-		UserAgent:   c.Request.UserAgent(),
+		UserAgent: c.Request.UserAgent(),
 	}
 
 	var existingTask models.Solutions_list
@@ -571,11 +577,11 @@ func getSolutionMessage(isCorrect, isSuspicious bool) string {
 	if !isCorrect {
 		return "Решение содержит ошибки. Проверьте синтаксис SQL и логику запроса."
 	}
-	
+
 	if isSuspicious {
 		return "Решение верное, но обнаружена подозрительная активность. Решение отправлено на дополнительную проверку."
 	}
-	
+
 	return "Решение верное! Отличная работа!"
 }
 
@@ -584,13 +590,13 @@ func convertMetadataToJSON(metadata map[string]interface{}) string {
 	if metadata == nil {
 		return "{}"
 	}
-	
+
 	jsonData, err := json.Marshal(metadata)
 	if err != nil {
 		log.Printf("Ошибка конвертации метаданных: %v", err)
 		return "{}"
 	}
-	
+
 	return string(jsonData)
 }
 
@@ -603,7 +609,7 @@ func saveSuspiciousActivity(userID uint, taskID int, solutionSQL string, reasons
 		Reasons:     strings.Join(reasons, "; "),
 		DetectedAt:  time.Now(),
 	}
-	
+
 	if err := database.DB.Create(&suspiciousLog).Error; err != nil {
 		log.Printf("Ошибка сохранения лога подозрительной активности: %v", err)
 	}
@@ -620,6 +626,106 @@ func logSolutionCheck(userID uint, taskID int, isCorrect, isSuspicious bool, exe
 func generateSchemaName(userID uint, taskID int) string {
 	timestamp := time.Now().UnixNano()
 	return fmt.Sprintf("user_%d_task_%d_%d", userID, taskID, timestamp)
+}
+
+// executeInSchemaWithMultipleTests выполняет решение с проверкой всех тестов
+func executeInSchemaWithMultipleTests(schemaName string, db_task models.Database_lists, task models.Tasks_list, userSQL string) (*SolutionResult, error) {
+	// 1. Основной тест
+	mainResult, err := executeInSchema(
+		schemaName+"_main",
+		db_task.Database_create_text,
+		db_task.Database_insert_text,
+		userSQL,
+		task.Database_decision,
+	)
+
+	if err != nil {
+		return mainResult, err
+	}
+
+	// Если основной тест не прошел - сразу возвращаем
+	if !mainResult.Success {
+		return mainResult, nil
+	}
+
+	// 2. Дополнительные тесты (если есть)
+	var testDataSets []map[string]interface{}
+	var expectedResults []map[string]interface{}
+
+	// Парсим JSON с дополнительными тестами
+	if db_task.TestDataSets != "" && db_task.TestDataSets != "[]" {
+		if err := json.Unmarshal([]byte(db_task.TestDataSets), &testDataSets); err != nil {
+			log.Printf("Ошибка парсинга TestDataSets: %v", err)
+		}
+	}
+
+	if task.ExpectedResults != "" && task.ExpectedResults != "[]" {
+		if err := json.Unmarshal([]byte(task.ExpectedResults), &expectedResults); err != nil {
+			log.Printf("Ошибка парсинга ExpectedResults: %v", err)
+		}
+	}
+
+	additionalTests := []TestResult{}
+	allTestsPassed := true
+
+	// Проверяем каждый дополнительный тест
+	minLen := len(testDataSets)
+	if len(expectedResults) < minLen {
+		minLen = len(expectedResults)
+	}
+
+	for i := 0; i < minLen; i++ {
+		testName := "Дополнительный тест"
+		if name, ok := testDataSets[i]["name"].(string); ok {
+			testName = name
+		}
+
+		insertSQL := ""
+		if sql, ok := testDataSets[i]["insert_sql"].(string); ok {
+			insertSQL = sql
+		}
+
+		expectedCSV := ""
+		if csv, ok := expectedResults[i]["expected_csv"].(string); ok {
+			expectedCSV = csv
+		}
+
+		testSchemaName := fmt.Sprintf("%s_test_%d", schemaName, i+1)
+		testResult, testErr := executeInSchema(
+			testSchemaName,
+			db_task.Database_create_text,
+			insertSQL,
+			userSQL,
+			expectedCSV,
+		)
+
+		testSuccess := testErr == nil && testResult != nil && testResult.Success
+		testMessage := "Тест пройден"
+
+		if !testSuccess {
+			allTestsPassed = false
+			if testErr != nil {
+				testMessage = fmt.Sprintf("Ошибка: %v", testErr)
+			} else if testResult != nil {
+				testMessage = testResult.Message
+			}
+		}
+
+		additionalTests = append(additionalTests, TestResult{
+			Name:    testName,
+			Success: testSuccess,
+			Message: testMessage,
+		})
+	}
+
+	// Если хотя бы один дополнительный тест провален - решение неверное
+	if !allTestsPassed {
+		mainResult.Success = false
+		mainResult.Message = "Основной тест пройден, но некоторые дополнительные тесты провалены"
+	}
+
+	mainResult.AdditionalTests = additionalTests
+	return mainResult, nil
 }
 
 // executeInSchema выполняет решение в изолированной схеме с использованием GORM
@@ -682,8 +788,6 @@ func executeInSchema(schemaName, schemaSQL, dataSQL, userSQL, expectedCSV string
 		ExpectedResult: expectedResult,
 	}, nil
 }
-
-
 
 // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 
@@ -902,7 +1006,7 @@ func validateSQL(sql string) error {
 		"DROP", "CREATE", "ALTER", "TRUNCATE",
 		"DELETE", "INSERT", "UPDATE",
 		"EXEC", "EXECUTE", "xp_", "sp_",
-		"UNION", "SELECT.*FROM", "INFORMATION_SCHEMA",
+		"SELECT.*FROM", "INFORMATION_SCHEMA",
 		"pg_", "\\c", "\\dt", "\\dn",
 	}
 
@@ -929,4 +1033,280 @@ func validateSQL(sql string) error {
 	}
 
 	return nil
+}
+
+// ExecuteFinalSolution выполняет итоговое решение через БД (для учителя и студента)
+func ExecuteFinalSolution(c *gin.Context) {
+	var request struct {
+		DatabaseID uint   `json:"database_id"`
+		SQLQuery   string `json:"sql_query"`
+		TestIndex  int    `json:"test_index"` // 0 = основной, 1+ = дополнительные
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный запрос: " + err.Error()})
+		return
+	}
+
+	// Валидация SQL (только SELECT разрешен)
+	if err := validateSQL(request.SQLQuery); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Недопустимый SQL: " + err.Error()})
+		return
+	}
+
+	userID := c.MustGet("userID").(uint)
+
+	// Получаем базу данных
+	var db_task models.Database_lists
+	if err := database.DB.Where("id = ?", request.DatabaseID).First(&db_task).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "База данных не найдена"})
+		return
+	}
+
+	// Определяем какой набор данных использовать
+	insertSQL := db_task.Database_insert_text // По умолчанию основной
+	testName := "Основной тест"
+
+	if request.TestIndex > 0 {
+		// Парсим дополнительные тесты
+		var testDataSets []map[string]interface{}
+		if err := json.Unmarshal([]byte(db_task.TestDataSets), &testDataSets); err == nil {
+			if request.TestIndex-1 < len(testDataSets) {
+				if sql, ok := testDataSets[request.TestIndex-1]["insert_sql"].(string); ok {
+					insertSQL = sql
+				}
+				if name, ok := testDataSets[request.TestIndex-1]["name"].(string); ok {
+					testName = name
+				}
+			}
+		}
+	}
+
+	// Создаем уникальное имя схемы
+	schemaName := fmt.Sprintf("preview_%d_%d", userID, time.Now().UnixNano())
+
+	// Выполняем запрос в изолированной схеме
+	result, err := executeQueryInSchema(schemaName, db_task.Database_create_text, insertSQL, request.SQLQuery)
+	if err != nil {
+		log.Printf("Ошибка выполнения итогового решения: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Ошибка выполнения запроса",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":   true,
+		"result":    result,
+		"rows":      len(result),
+		"test_name": testName,
+	})
+}
+
+// executeQueryInSchema выполняет SELECT запрос в изолированной схеме
+func executeQueryInSchema(schemaName, schemaSQL, dataSQL, userSQL string) ([]map[string]interface{}, error) {
+	schemaDB, err := createSchemaConnection()
+	if err != nil {
+		return nil, fmt.Errorf("ошибка создания соединения: %v", err)
+	}
+	defer closeSchemaConnection(schemaDB)
+
+	// 1. Создаем схему
+	if err := schemaDB.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schemaName)).Error; err != nil {
+		return nil, fmt.Errorf("ошибка создания схемы: %v", err)
+	}
+
+	// 2. Устанавливаем схему
+	if err := schemaDB.Exec(fmt.Sprintf("SET search_path TO %s", schemaName)).Error; err != nil {
+		return nil, fmt.Errorf("ошибка установки схемы: %v", err)
+	}
+
+	// 3. Создаем таблицы
+	if err := executeSchemaSQL(schemaDB, schemaSQL); err != nil {
+		return nil, fmt.Errorf("ошибка создания таблиц: %v", err)
+	}
+
+	// 4. Заполняем данными (если есть)
+	if dataSQL != "" && strings.TrimSpace(dataSQL) != "" {
+		if err := executeSchemaSQL(schemaDB, dataSQL); err != nil {
+			return nil, fmt.Errorf("ошибка заполнения данных: %v", err)
+		}
+	}
+
+	// 5. Выполняем пользовательский запрос
+	result, err := executeUserQuery(schemaDB, userSQL)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка выполнения запроса: %v", err)
+	}
+
+	// 6. Удаляем схему асинхронно
+	go func() {
+		cleanupDB, err := createSchemaConnection()
+		if err == nil {
+			defer closeSchemaConnection(cleanupDB)
+			cleanupDB.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", schemaName))
+		}
+	}()
+
+	return result, nil
+}
+
+// ==================== ПРОВЕРКА С МНОЖЕСТВЕННЫМИ ТЕСТАМИ ====================
+
+// Добавить новую структуру для результатов тестов
+type TestResult struct {
+	Name    string `json:"name"`
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+func GenerateExpectedResults(c *gin.Context) {
+	var request struct {
+		DatabaseID uint   `json:"database_id"`
+		SQLQuery   string `json:"sql_query"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный запрос: " + err.Error()})
+		return
+	}
+
+	// Валидация SQL (только SELECT разрешен)
+	if err := validateSQL(request.SQLQuery); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Недопустимый SQL: " + err.Error()})
+		return
+	}
+
+	userID := c.MustGet("userID").(uint)
+
+	// Получаем базу данных
+	var db_task models.Database_lists
+	if err := database.DB.Where("id = ?", request.DatabaseID).First(&db_task).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "База данных не найдена"})
+		return
+	}
+
+	// Создаем уникальное имя схемы
+	schemaName := fmt.Sprintf("generate_%d_%d", userID, time.Now().UnixNano())
+
+	// 1. Выполняем SQL на основном INSERT
+	mainResult, err := executeQueryInSchema(
+		schemaName+"_main",
+		db_task.Database_create_text,
+		db_task.Database_insert_text,
+		request.SQLQuery,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Ошибка выполнения запроса на основных данных",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Конвертируем основной результат в CSV
+	mainCSV, err := resultToCSV(mainResult)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Ошибка конвертации результата в CSV",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// 2. Выполняем SQL на всех проверочных INSERT
+	var testDataSets []map[string]interface{}
+	var expectedResults []map[string]interface{}
+
+	if db_task.TestDataSets != "" && db_task.TestDataSets != "[]" {
+		if err := json.Unmarshal([]byte(db_task.TestDataSets), &testDataSets); err == nil {
+			for i, testData := range testDataSets {
+				insertSQL := ""
+				if sql, ok := testData["insert_sql"].(string); ok {
+					insertSQL = sql
+				}
+
+				testSchemaName := fmt.Sprintf("%s_test_%d", schemaName, i+1)
+				testResult, err := executeQueryInSchema(
+					testSchemaName,
+					db_task.Database_create_text,
+					insertSQL,
+					request.SQLQuery,
+				)
+
+				if err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{
+						"error":   fmt.Sprintf("Ошибка выполнения запроса на проверочных данных %d", i+1),
+						"details": err.Error(),
+					})
+					return
+				}
+
+				// Конвертируем результат в CSV
+				testCSV, err := resultToCSV(testResult)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error":   fmt.Sprintf("Ошибка конвертации результата теста %d в CSV", i+1),
+						"details": err.Error(),
+					})
+					return
+				}
+
+				expectedResults = append(expectedResults, map[string]interface{}{
+					"name":         fmt.Sprintf("Проверка %d", i+1),
+					"expected_csv": testCSV,
+				})
+			}
+		}
+	}
+
+	// Возвращаем все результаты
+	c.JSON(http.StatusOK, gin.H{
+		"success":          true,
+		"main_result":      mainResult,
+		"main_csv":         mainCSV,
+		"expected_results": expectedResults,
+		"test_count":       len(expectedResults),
+	})
+}
+
+// resultToCSV конвертирует результат запроса в CSV формат
+func resultToCSV(data []map[string]interface{}) (string, error) {
+	if len(data) == 0 {
+		return "", nil
+	}
+
+	// Получаем заголовки из первой строки
+	var headers []string
+	for key := range data[0] {
+		headers = append(headers, key)
+	}
+	sort.Strings(headers) // Сортируем для консистентности
+
+	// Формируем CSV
+	var csv strings.Builder
+	csv.WriteString(strings.Join(headers, ","))
+	csv.WriteString("\n")
+
+	for _, row := range data {
+		var values []string
+		for _, header := range headers {
+			value := row[header]
+			if value == nil {
+				values = append(values, "")
+			} else {
+				// Экранируем значения с запятыми и кавычками
+				strValue := fmt.Sprintf("%v", value)
+				if strings.Contains(strValue, ",") || strings.Contains(strValue, "\"") || strings.Contains(strValue, "\n") {
+					strValue = fmt.Sprintf("\"%s\"", strings.ReplaceAll(strValue, "\"", "\"\""))
+				}
+				values = append(values, strValue)
+			}
+		}
+		csv.WriteString(strings.Join(values, ","))
+		csv.WriteString("\n")
+	}
+
+	return csv.String(), nil
 }
