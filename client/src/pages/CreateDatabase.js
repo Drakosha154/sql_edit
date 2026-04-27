@@ -39,6 +39,10 @@ import { useDagreLayout } from '../utils/useDagreLayout';
 
 import { parseSQL } from '../utils/sqlParser';
 import { csvToJson } from '../utils/csvToJson';
+import TutorialButton from '../components/TutorialButton';
+import { useTutorialAutoStart, startTutorialManually } from '../hooks/useTutorialAutoStart';
+import { createDatabaseSteps } from '../config/tutorialSteps';
+import { useTutorial } from '../components/TutorialContext';
 
 
 
@@ -94,6 +98,9 @@ export default function CreateDatabase() {
   const [result, setResult] = useState([]);
   const [csvDecision, setCsvDecision] = useState('');
   const [selectedColumns, setSelectedColumns] = useState([]);
+  const tutorialContext = useTutorial();
+  useTutorialAutoStart('createDatabase', createDatabaseSteps);
+  const { registerTabSwitcher, unregisterTabSwitcher } = useTutorial();
 
   const { id } = useParams();
 
@@ -261,6 +268,20 @@ useEffect(() => {
   
   fetchDatabase();
 }, [id]);
+
+  useEffect(() => {
+      registerTabSwitcher('main', setActiveTab);
+      return () => {
+          unregisterTabSwitcher('main');
+      };
+  }, [registerTabSwitcher, unregisterTabSwitcher]);
+
+  useEffect(() => {
+      registerTabSwitcher('sidebar', setSidebarActiveTab);
+      return () => {
+          unregisterTabSwitcher('sidebar');
+      };
+  }, [registerTabSwitcher, unregisterTabSwitcher]);
     
   useEffect(() => {
     const fetchUserDatabases = async () => {
@@ -943,16 +964,18 @@ const flowContent = useMemo(() => (
   return (
     <div class='erd-container d-flex flex-column vh-100 overflow-hidden'>
     <div class='p-2 border-bottom'>
-      <DatabaseSaveButton 
-    nodes={nodes}
-    tableData={tableData}
-    generateSQL={generateSQL}
-    generateDataInsertSQL={generateDataInsertSQL}
-    taskDescription={taskDescription}
-    result={result}
-    setCsvDecision={setCsvDecision}
-    csvDecision={csvDecision}
-/>
+      <div data-tour="save-button">
+        <DatabaseSaveButton 
+          nodes={nodes}
+          tableData={tableData}
+          generateSQL={generateSQL}
+          generateDataInsertSQL={generateDataInsertSQL}
+          taskDescription={taskDescription}
+          result={result}
+          setCsvDecision={setCsvDecision}
+          csvDecision={csvDecision}
+        />
+      </div>
     </div>
     <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
 
@@ -990,23 +1013,22 @@ const flowContent = useMemo(() => (
       {/* Кнопки переключения вкладок */}
       <Nav variant="tabs" className="position-relative nav-justified">
         <Nav.Item className="">
-          <Nav.Link eventKey="ERD">
+          <Nav.Link eventKey="ERD" data-tour="sql-tab">
             Создание базы данных
           </Nav.Link>
         </Nav.Item>
 
         <Nav.Item className="">
-          <Nav.Link eventKey="manage">
+          <Nav.Link eventKey="manage" data-tour="data-tab">
             Заполнение таблиц
           </Nav.Link>
         </Nav.Item>
-
       </Nav>
 
       <Tab.Content className="d-flex w-100 h-100 overflow-auto">
         <Tab.Pane className="d-flex w-100 h-100" eventKey="ERD" forceMount={activeTab !== "ERD"}>
           <div className="d-flex w-100 h-100">
-            <div className="sidebar-wrapper">
+            <div className="sidebar-wrapper" data-tour="sidebar">
               <Sidebar 
                 nodes={nodes}
                 setNodes={setNodes}
@@ -1132,6 +1154,7 @@ const flowContent = useMemo(() => (
 </Tab.Pane>
       </Tab.Content> 
     </Tab.Container>
+    <TutorialButton onClick={() => startTutorialManually(createDatabaseSteps, tutorialContext)} />
   </div>
   );
 }

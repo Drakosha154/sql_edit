@@ -374,4 +374,4 @@ SELECT department_name, semester,
        END AS trend
 FROM semester_trends
 WHERE prev_semester_grade IS NOT NULL
-ORDER BY department_name, semester 
+ORDER BY department_name, semester

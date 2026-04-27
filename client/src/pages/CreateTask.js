@@ -36,6 +36,10 @@ import Task_manage from './Task_manage';
 import TaskPreview from './TaskPreview';
 import SolutionView from './SolutionView';
 import TaskSaveButton from '../components/TaskSaveButton';
+import TutorialButton from '../components/TutorialButton';
+import { useTutorialAutoStart, startTutorialManually } from '../hooks/useTutorialAutoStart';
+import { createTaskSteps } from '../config/tutorialSteps';
+import { useTutorial } from '../components/TutorialContext';
 
 import { parseSQL } from '../utils/sqlParser';
 import { csvToJson } from '../utils/csvToJson';
@@ -92,11 +96,14 @@ export default function CreateTask() {
   const [databaseId, setDatabaseId] = useState('');
   const [sqlQuery, setSqlQuery] = useState('');
   const [generatedResults, setGeneratedResults] = useState(null);
-const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const { registerTabSwitcher, unregisterTabSwitcher } = useTutorial();
 
 
   const { id } = useParams();
-    
+  const tutorialContext = useTutorial();
+  useTutorialAutoStart('createTask', createTaskSteps);
+
   useEffect(() => {
     const fetchUserTasks = async () => {
             try {
@@ -137,6 +144,13 @@ const [isGenerating, setIsGenerating] = useState(false);
     };
     fetchUserTasks();  
 }, []);
+
+  useEffect(() => {
+      registerTabSwitcher('main', setActiveTab);
+      return () => {
+          unregisterTabSwitcher('main');
+      };
+  }, [registerTabSwitcher, unregisterTabSwitcher]);
 
 const fetchSelectedDatabase = async (database) => {
     try {
@@ -940,15 +954,17 @@ if (col) {
 
     <div class='erd-container d-flex flex-column vh-100'>
     <div class='p-2 border-bottom d-flex'>
-<TaskSaveButton
-  databaseId={databaseId}
-  taskDescription={taskDescription}
-  result={result}
-  setCsvDecision={setCsvDecision}
-  sqlQuery={sqlQuery}
-  generatedResults={generatedResults}
-/>
-    <div class="ms-3 p-2 border rounded">
+      <div data-tour="save-task-button">
+        <TaskSaveButton
+          databaseId={databaseId}
+          taskDescription={taskDescription}
+          result={result}
+          setCsvDecision={setCsvDecision}
+          sqlQuery={sqlQuery}
+          generatedResults={generatedResults}
+        />
+      </div>
+    <div class="ms-3 p-2 border rounded" data-tour="database-selector">
       Выбрана база данных: {selectedDatabase ? selectedDatabase : 'не выбрана'}
     </div>
     </div>
@@ -957,13 +973,13 @@ if (col) {
       {/* Кнопки переключения вкладок */}
       <Nav variant="tabs" className="position-relative nav-justified">
         <Nav.Item>
-          <Nav.Link eventKey="solution">
+          <Nav.Link eventKey="solution" data-tour="solution-tab">
             Итоговое решение
           </Nav.Link>
         </Nav.Item>
 
         <Nav.Item className="">
-          <Nav.Link eventKey="task">
+          <Nav.Link eventKey="task" data-tour="task-tab">
             Формулировка задачи
           </Nav.Link>
         </Nav.Item>
@@ -1007,6 +1023,7 @@ if (col) {
       onSelect={handleDatabaseSelect}
       loading={loading}
     />
+    <TutorialButton onClick={() => startTutorialManually(createTaskSteps, tutorialContext)} />
     </div>
   );
 }

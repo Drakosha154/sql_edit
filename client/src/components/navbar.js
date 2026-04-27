@@ -14,7 +14,7 @@ export default function Navbar({ isAuth, setAuth }) {
   return (
     <nav className="navbar navbar-expand-lg bg-body-tertiary">
       <div className="container-fluid shadow-lg">
-        <NavLink to="/" className="navbar-brand">SQL Editor</NavLink>
+        <NavLink to="/" className="navbar-brand" data-tour="navbar-logo">SQL Editor</NavLink>
         <div className="collapse navbar-collapse justify-content-end" id="navbarTogglerDemo03">
           <ul className="navbar-nav">
             {!isAuth ? (
@@ -28,11 +28,11 @@ export default function Navbar({ isAuth, setAuth }) {
               </>
             ) : (
               <>
-                <li className="nav-item">
+                <li className="nav-item" data-tour="navbar-theme">
                   <ThemeToggle />
                 </li>
                 <li className="nav-item">
-                  <NavLink to="/profile" className="nav-link">Профиль</NavLink>
+                  <NavLink to="/profile" className="nav-link" data-tour="navbar-profile">Профиль</NavLink>
                 </li>
                 <li className="nav-item">
                   <button className="btn btn-link nav-link" onClick={handleLogout}>Выйти</button>

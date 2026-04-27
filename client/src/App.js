@@ -12,6 +12,7 @@ import UserProfile from './pages/UserProfile'
 import AdminPanel from './pages/AdminPanel'
 import ProtectedRoute from './components/ProtectedRoute'
 import { ThemeProvider } from './components/ThemeContext';
+import { TutorialProvider } from './components/TutorialContext';
 
 function App() {
   const [isAuth, setAuth] = useState(false);
@@ -26,27 +27,29 @@ function App() {
   }, []);
 
   return (
-    <ThemeProvider> 
-    <div className="erd-container d-flex flex-column vh-100">
-      <Navbar isAuth={isAuth} setAuth={setAuth} />
-        <Routes>
-          <Route path="/" element={<Main />} />
-          <Route path="/create_database/:id?" element={<CreateDatabase />} />
-          <Route path="/create_task/:id?" element={<CreateTask />} />
-          <Route path="/login" element={<Login setAuth={setAuth} />} />
-          <Route path="/register" element={<Register setAuth={setAuth} />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/profile/:id" element={<UserProfile />} />
-          <Route path="/resolve/:id" element={<Resolve />} />
-          <Route path="/admin" element={
-            <ProtectedRoute>
-              <AdminPanel />
-            </ProtectedRoute>
-          } />
-        </Routes>
-    </div>
-    </ThemeProvider> 
-  );
+  <ThemeProvider>
+    <TutorialProvider>
+      <div className="erd-container d-flex flex-column vh-100">
+        <Navbar isAuth={isAuth} setAuth={setAuth} />
+          <Routes>
+            <Route path="/" element={<Main />} />
+            <Route path="/create_database/:id?" element={<CreateDatabase />} />
+            <Route path="/create_task/:id?" element={<CreateTask />} />
+            <Route path="/login" element={<Login setAuth={setAuth} />} />
+            <Route path="/register" element={<Register setAuth={setAuth} />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/:id" element={<UserProfile />} />
+            <Route path="/resolve/:id" element={<Resolve />} />
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <AdminPanel />
+              </ProtectedRoute>
+            } />
+          </Routes>
+      </div>
+    </TutorialProvider>
+  </ThemeProvider> 
+);
 }
 
 export default App;

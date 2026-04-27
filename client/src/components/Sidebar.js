@@ -70,13 +70,13 @@ const Sidebar = React.memo(({
       <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
           <Nav variant="tabs" className="flex-row nav-justified">
             <Nav.Item>
-              <Nav.Link eventKey="tables">
+              <Nav.Link eventKey="tables" data-tour="tables-tab">
                 <i className="bi bi-table me-2"></i>
                 Таблицы
               </Nav.Link>
             </Nav.Item>
             <Nav.Item>
-              <Nav.Link eventKey="relations">
+              <Nav.Link eventKey="relations" data-tour="relations-tab">
                 <i className="bi bi-arrow-left-right me-2"></i>
                 Отношения
               </Nav.Link>

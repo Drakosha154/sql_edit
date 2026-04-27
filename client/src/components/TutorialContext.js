@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import Joyride, { STATUS } from 'react-joyride';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { Joyride, STATUS } from 'react-joyride';
 
 const TutorialContext = createContext();
+
 
 export const useTutorial = () => {
   const context = useContext(TutorialContext);
@@ -14,11 +15,22 @@ export const useTutorial = () => {
 export const TutorialProvider = ({ children }) => {
   const [run, setRun] = useState(false);
   const [steps, setSteps] = useState([]);
-  const [stepIndex, setStepIndex] = useState(0);
+  const [tabSwitchers, setTabSwitchers] = useState({});
+
+  const registerTabSwitcher = useCallback((context, switcherFn) => {
+    setTabSwitchers(prev => ({ ...prev, [context]: switcherFn }));
+  }, []);
+
+  const unregisterTabSwitcher = useCallback((context) => {
+    setTabSwitchers(prev => {
+      const newSwitchers = { ...prev };
+      delete newSwitchers[context];
+      return newSwitchers;
+    });
+  }, []);
 
   const startTutorial = useCallback((tutorialSteps) => {
     setSteps(tutorialSteps);
-    setStepIndex(0);
     setRun(true);
   }, []);
 
@@ -26,27 +38,65 @@ export const TutorialProvider = ({ children }) => {
     setRun(false);
   }, []);
 
-  const handleJoyrideCallback = (data) => {
-    const { status, index, type } = data;
+  const restartTutorial = useCallback((tutorialSteps) => {
+  // Сначала останавливаем текущий туториал
+  setRun(false);
+  
+  // Небольшая задержка для полного размонтирования
+  setTimeout(() => {
+    setSteps(tutorialSteps);
+    setRun(true);
+  }, 100);
+}, []);
 
+  const handleJoyrideCallback = (data) => {
+    const { status, index, type, action, lifecycle } = data;
+    
+    console.log('Joyride callback:', { status, index, type, action, lifecycle });
+    
+    // Переключаем вкладку ПЕРЕД показом шага
+    if (type === 'step:before' && steps[index]) {
+      const step = steps[index];
+      if (step.tabKey) {
+        const context = step.tabContext || 'main';
+        const switcher = tabSwitchers[context];
+        if (switcher) {
+          switcher(step.tabKey);
+          // Небольшая задержка для анимации переключения
+          // Joyride автоматически подождет, пока элемент не станет видимым
+        }
+      }
+    }
+    
+    // Обрабатываем завершение или пропуск тура
     if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
       setRun(false);
-      setStepIndex(0);
-    } else if (type === 'step:after') {
-      setStepIndex(index + 1);
     }
   };
 
-  return (
-    <TutorialContext.Provider value={{ startTutorial, stopTutorial, run }}>
+  const contextValue = React.useMemo(() => ({
+    startTutorial, 
+    stopTutorial, 
+    restartTutorial, 
+    registerTabSwitcher,
+    unregisterTabSwitcher,
+    run 
+  }), [startTutorial, stopTutorial, restartTutorial, registerTabSwitcher, unregisterTabSwitcher, run]);
+
+return (
+  <TutorialContext.Provider value={contextValue}>
       {children}
       <Joyride
         steps={steps}
         run={run}
-        stepIndex={stepIndex}
         continuous
         showProgress
         showSkipButton
+        scrollToFirstStep
+        disableScrolling={false}
+        spotlightClicks={false}
+        disableOverlayClose={false}
+        hideCloseButton={false}
         callback={handleJoyrideCallback}
         styles={{
           options: {

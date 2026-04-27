@@ -19,6 +19,10 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import "bootstrap-icons/font/bootstrap-icons.css";
 import DatabaseVisualPreview from '../components/DatabaseVisualPreview';
 import { csvToJson } from '../utils/csvToJson';
+import TutorialButton from '../components/TutorialButton';
+import { useTutorialAutoStart, startTutorialManually } from '../hooks/useTutorialAutoStart';
+import { resolveTaskSteps } from '../config/tutorialSteps';
+import { useTutorial } from '../components/TutorialContext';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
@@ -97,6 +101,8 @@ export default function Resolve() {
   const [idDatabase, setIdDatabase] = useState('');
   const [taskName, setTaskName] = useState('');
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const tutorialContext = useTutorial();
+  useTutorialAutoStart('resolve', resolveTaskSteps);
   
   // Новые состояния для системы контроля
   const [copyCount, setCopyCount] = useState(0);
@@ -550,7 +556,7 @@ export default function Resolve() {
               
               <Card.Body>
                 {/* Условие задачи */}
-                <div className="task-section mb-4">
+                <div className="task-section mb-4" data-tour="task-description">
                   <div className="d-flex align-items-center mb-3">
                     <Badge bg="info" className="me-2">
                       <i className="bi bi-question-circle"></i>
@@ -574,7 +580,7 @@ export default function Resolve() {
 
                 {/* Схема базы данных */}
                 {nodes.length > 0 && (
-                  <div className="schema-section mb-4">
+                  <div className="schema-section mb-4" data-tour="database-preview">
                     <div className="d-flex align-items-center mb-3">
                       <Badge bg="secondary" className="me-2">
                         <i className="bi bi-diagram-3"></i>
@@ -615,7 +621,7 @@ export default function Resolve() {
                   </div>
                   
                   
-                  <Form.Group className="mb-3">
+                  <Form.Group className="mb-3" data-tour="sql-editor">
                     <Form.Label>
                       <strong>SQL запрос:</strong>
                       {/* {copyCount > 0 && (
@@ -657,6 +663,7 @@ export default function Resolve() {
                       onClick={checkSolution}
                       disabled={isChecking || !safeSolutionCode.trim() || !isWindowActive}
                       className="flex-grow-1"
+                      data-tour="check-button"
                     >
                       {isChecking ? (
                         <>
@@ -913,6 +920,7 @@ export default function Resolve() {
             </Card>
           </Col>
         </Row>
+        <TutorialButton onClick={() => startTutorialManually(resolveTaskSteps, tutorialContext)} />
       </Container>
 
       {/* Модальное окно для предупреждений */}

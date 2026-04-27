@@ -7,7 +7,8 @@ import {
   Card, 
   Spinner, 
   Alert, 
-  Tab, 
+  Tab,
+  Nav, 
   Tabs, 
   Table, 
   Badge, 
@@ -15,6 +16,10 @@ import {
   Modal,
   Accordion
 } from 'react-bootstrap';
+import TutorialButton from '../components/TutorialButton';
+import { useTutorialAutoStart, startTutorialManually } from '../hooks/useTutorialAutoStart';
+import { profilePageSteps } from '../config/tutorialSteps';
+import { useTutorial } from '../components/TutorialContext';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL
 
@@ -32,10 +37,21 @@ export default function Profile() {
     const [selectedTask, setSelectedTask] = useState(null);
     const [showLogModal, setShowLogModal] = useState(false);
     const [selectedSolution, setSelectedSolution] = useState(null);
+    const [activeTab, setActiveTab] = useState('databases');
+    const { registerTabSwitcher, unregisterTabSwitcher } = useTutorial();
+    const tutorialContext = useTutorial();
+    useTutorialAutoStart('profile', profilePageSteps);
 
     useEffect(() => {
         fetchMyProfile();
     }, []);
+
+    useEffect(() => {
+        registerTabSwitcher('main', setActiveTab);
+        return () => {
+            unregisterTabSwitcher('main');
+        };
+    }, [registerTabSwitcher, unregisterTabSwitcher]);
 
     const fetchMyProfile = async () => {
         try {
@@ -250,18 +266,18 @@ export default function Profile() {
                                     </p>
                                 </Col>
                                 <Col md={4}>
-                                    <div className="d-flex justify-content-around text-center">
+                                    <div className="d-flex justify-content-around text-center" data-tour="profile-stats">
                                         <div>
-                                            <h4 className="text-primary">{stats.database_count}</h4>
-                                            <small className="text-muted">Баз данных</small>
+                                        <h4 className="text-primary">{stats.database_count}</h4>
+                                        <small className="text-muted">Баз данных</small>
                                         </div>
                                         <div>
-                                            <h4 className="text-info">{stats.solved_count}</h4>
-                                            <small className="text-muted">Решений</small>
+                                        <h4 className="text-info">{stats.solved_count}</h4>
+                                        <small className="text-muted">Решений</small>
                                         </div>
                                         <div>
-                                            <h4 className="text-success">{stats.correct_count}</h4>
-                                            <small className="text-muted">Верных</small>
+                                        <h4 className="text-success">{stats.correct_count}</h4>
+                                        <small className="text-muted">Верных</small>
                                         </div>
                                     </div>
                                 </Col>
@@ -269,13 +285,31 @@ export default function Profile() {
                         </Card.Body>
                     </Card>
 
-                    <Tabs defaultActiveKey="databases" className="mb-3">
-                        <Tab eventKey="databases" title="Базы данных">
+                    <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
+                        <Nav variant="tabs" className="mb-3">
+                            <Nav.Item>
+                            <Nav.Link eventKey="databases" data-tour="databases-tab">
+                                Базы данных
+                            </Nav.Link>
+                            </Nav.Item>
+                            <Nav.Item>
+                            <Nav.Link eventKey="tasks" data-tour="tasks-tab">
+                                Мои задания
+                            </Nav.Link>
+                            </Nav.Item>
+                            <Nav.Item>
+                            <Nav.Link eventKey="solutions" data-tour="solutions-tab">
+                                Решения
+                            </Nav.Link>
+                            </Nav.Item>
+                        </Nav>
+                        <Tab.Content>
+                            <Tab.Pane eventKey="databases">
                             <Card>
                                 <Card.Body>
-                                    <div className="btn border ms-3">
-                                        <NavLink to="/create_database" className="nav-link">Создать базу данных</NavLink>
-                                    </div>
+                                <div className="btn border ms-3" data-tour="create-database-btn">
+                                    <NavLink to="/create_database" className="nav-link">Создать базу данных</NavLink>
+                                </div>
                                     {databases.length > 0 ? (
                                         <div className="list-group m-2">
                                             {databases.map(db => (
@@ -300,11 +334,11 @@ export default function Profile() {
                                     )}
                                 </Card.Body>
                             </Card>
-                        </Tab>
+                        </Tab.Pane>
                         
-                        <Tab eventKey="tasks" title="Мои задания">
-                            <Card>
-                                <Card.Body>
+    <Tab.Pane eventKey="tasks">
+      <Card>
+        <Card.Body>
                                     <div className="btn border ms-3">
                                         <NavLink to="/create_task" className="nav-link">Создать задание</NavLink>
                                     </div>
@@ -336,13 +370,13 @@ export default function Profile() {
                                             Нет созданных заданий
                                         </div>
                                     )}
-                                </Card.Body>
-                            </Card>
-                        </Tab>
+        </Card.Body>
+      </Card>
+    </Tab.Pane>
 
-                        <Tab eventKey="solutions" title="Решения">
-                            <Card>
-                                <Card.Body>
+    <Tab.Pane eventKey="solutions">
+      <Card>
+        <Card.Body>
                                     {solutions.length > 0 ? (
                                         <Table striped>
                                             <thead>
@@ -377,10 +411,11 @@ export default function Profile() {
                                             Нет решений заданий
                                         </div>
                                     )}
-                                </Card.Body>
-                            </Card>
-                        </Tab>
-                    </Tabs>
+        </Card.Body>
+      </Card>
+    </Tab.Pane>
+  </Tab.Content>
+</Tab.Container>
 
                     {/* Модальное окно для статистики решений */}
                     <Modal show={showStatsModal} onHide={() => setShowStatsModal(false)} size="xl">
@@ -578,6 +613,7 @@ export default function Profile() {
 
                 </Col>
             </Row>
+            <TutorialButton onClick={() => startTutorialManually(profilePageSteps, tutorialContext)} />
         </Container>
     );
 }

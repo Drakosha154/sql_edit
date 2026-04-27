@@ -5,6 +5,10 @@ import {
 } from 'react-bootstrap';
 import { useNavigate, Link } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
+import TutorialButton from '../components/TutorialButton';
+import { useTutorialAutoStart, startTutorialManually } from '../hooks/useTutorialAutoStart';
+import { mainPageSteps } from '../config/tutorialSteps';
+import { useTutorial } from '../components/TutorialContext';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
@@ -18,6 +22,8 @@ export default function Main() {
         createdTasks: 0,
         totalTasks: 0
     });
+    const tutorialContext = useTutorial();
+    useTutorialAutoStart('main', mainPageSteps);
     const [activeUsers, setActiveUsers] = useState([]);
     const [currentUser, setCurrentUser] = useState(null);
 
@@ -131,19 +137,21 @@ export default function Main() {
                                 <p className="text-muted small mb-3">
                                     Найдите пользователя, чтобы посмотреть его профиль и решить созданные им SQL задачи
                                 </p>
-                                <Form.Group>
-                                    <Form.Control
+                                <div data-tour="search-users">
+                                    <Form.Group>
+                                        <Form.Control
                                         type="text"
                                         placeholder="Введите имя пользователя, email или ID..."
                                         value={searchQuery}
                                         onChange={handleInputChange}
                                         autoFocus
                                         className="py-2"
-                                    />
-                                    <Form.Text className="text-muted">
+                                        />
+                                        <Form.Text className="text-muted">
                                         Минимум 2 символа для начала поиска
-                                    </Form.Text>
-                                </Form.Group>
+                                        </Form.Text>
+                                    </Form.Group>
+                                </div>
                             </div>
 
                             {/* Результаты поиска */}
@@ -243,7 +251,7 @@ export default function Main() {
 
                 {/* Боковая панель - активные пользователи */}
                 <Col lg={4}>
-                    <Card className="shadow-sm mb-4">
+                    <Card className="shadow-sm mb-4" data-tour="active-users">
                         <Card.Body className="p-4">
                             <h5 className="mb-3">
                                 <span className="me-2">🏆</span>
@@ -324,6 +332,7 @@ export default function Main() {
                     </Card>
                 </Col>
             </Row>
+            <TutorialButton onClick={() => startTutorialManually(mainPageSteps, tutorialContext)} />
         </Container>
     );
 }
