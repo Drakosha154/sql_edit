@@ -1,15 +1,13 @@
 import React, { useCallback, useState, useEffect, useMemo } from 'react';
 
-const AttributeItem = React.memo(({ attribute, onUpdate, onRemove, nodeId, updateEdgeAttributes}) => {
+const AttributeItem = React.memo(({ attribute, onUpdate, onRemove, nodeId, updateEdgeAttributes }) => {
 
   const [prevName, setPrevName] = useState(attribute.name);
   const [showParams, setShowParams] = useState(false);
   const [param1, setParam1] = useState('');
   const [param2, setParam2] = useState('');
   
-  // Инициализация параметров при монтировании и изменении типа
   useEffect(() => {
-    // Если тип уже содержит параметры (например, "VARCHAR(255)" или "DECIMAL(10,2)")
     const match = attribute.type.match(/^(\w+)\(([^)]+)\)$/);
     if (match) {
       const [, baseType, params] = match;
@@ -26,37 +24,28 @@ const AttributeItem = React.memo(({ attribute, onUpdate, onRemove, nodeId, updat
 
   const handleChange = useCallback((field) => (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-
     if (field === 'name' && !value.trim()) {
       alert('Имя атрибута не может быть пустым');
       return;
     }
-
-    // Если изменяется имя атрибута
     if (field === 'name') {
       updateEdgeAttributes(nodeId, prevName, value);
       setPrevName(value);
     }
-
     onUpdate(attribute.id, field, value);
   }, [onUpdate, attribute.id, nodeId, prevName, updateEdgeAttributes]);
 
-const isForeignKey = useMemo(() => {
-  // Атрибут считается внешним ключом, если его имя заканчивается на _id
-  // или есть специальный флаг isForeignKey
-  return attribute.isForeignKey;
-}, [attribute]);
+  const isForeignKey = useMemo(() => {
+    return attribute.isForeignKey;
+  }, [attribute]);
 
   const handleTypeChange = useCallback((e) => {
     const newType = e.target.value;
-    
-    // Если тип требует параметров
     const typesWithParams = ['VARCHAR', 'CHAR', 'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE'];
     const selectedBaseType = newType.split('(')[0];
     
     if (typesWithParams.includes(selectedBaseType)) {
       setShowParams(true);
-      // Если параметры уже есть в типе (например, при выборе из списка)
       const match = newType.match(/\(([^)]+)\)/);
       if (match) {
         const params = match[1].split(',').map(p => p.trim());
@@ -64,7 +53,6 @@ const isForeignKey = useMemo(() => {
         setParam2(params[1] || '');
         onUpdate(attribute.id, 'type', newType);
       } else {
-        // Без параметров по умолчанию
         onUpdate(attribute.id, 'type', selectedBaseType);
       }
     } else {
@@ -74,53 +62,6 @@ const isForeignKey = useMemo(() => {
       onUpdate(attribute.id, 'type', newType);
     }
   }, [onUpdate, attribute.id]);
-
-  const handleApplyParams = useCallback(() => {
-    let newType = attribute.type.split('(')[0]; // Берем базовый тип без параметров
-    
-    if (param1.trim()) {
-      if (param2.trim()) {
-        newType = `${newType}(${param1},${param2})`;
-      } else {
-        newType = `${newType}(${param1})`;
-      }
-    }
-    
-    onUpdate(attribute.id, 'type', newType);
-  }, [attribute.type, param1, param2, onUpdate, attribute.id]);
-
-  // Функция для получения отображаемого имени типа
-  const getDisplayType = (type) => {
-    const baseType = type.split('(')[0];
-    const typeNames = {
-      'STRING': 'TEXT',
-      'INTEGER': 'INTEGER',
-      'BIGINT': 'BIGINT',
-      'SMALLINT': 'SMALLINT',
-      'DECIMAL': 'DECIMAL',
-      'NUMERIC': 'NUMERIC',
-      'REAL': 'REAL',
-      'DOUBLE': 'DOUBLE PRECISION',
-      'FLOAT': 'FLOAT',
-      'BOOLEAN': 'BOOLEAN',
-      'DATE': 'DATE',
-      'TIME': 'TIME',
-      'TIMESTAMP': 'TIMESTAMP',
-      'TIMESTAMPTZ': 'TIMESTAMP WITH TIME ZONE',
-      'INTERVAL': 'INTERVAL',
-      'VARCHAR': 'VARCHAR',
-      'CHAR': 'CHAR',
-      'TEXT': 'TEXT',
-      'BYTEA': 'BYTEA',
-      'JSON': 'JSON',
-      'JSONB': 'JSONB',
-      'UUID': 'UUID',
-      'SERIAL': 'SERIAL',
-      'BIGSERIAL': 'BIGSERIAL'
-    };
-    
-    return typeNames[baseType] || type;
-  };
 
   return (
     <div className="d-flex align-items-center gap-2 mb-2 p-2 border rounded">
@@ -138,81 +79,31 @@ const isForeignKey = useMemo(() => {
         onChange={handleTypeChange}
       >
         <optgroup label="Числовые типы">
-            <option value="INTEGER">INTEGER</option>
-            <option value="SMALLINT">SMALLINT</option>
-            <option value="BIGINT">BIGINT</option>
-            <option value="DECIMAL">DECIMAL</option>
-            <option value="NUMERIC">NUMERIC</option>
-            <option value="REAL">REAL</option>
-            <option value="DOUBLE">DOUBLE PRECISION</option>
-            <option value="FLOAT">FLOAT</option>
-            <option value="SERIAL">SERIAL</option>
-            <option value="BIGSERIAL">BIGSERIAL</option>
-          </optgroup>
-          
-          <optgroup label="Символьные типы">
-            <option value="VARCHAR">VARCHAR</option>
-            <option value="CHAR">CHAR</option>
-            <option value="TEXT">TEXT</option>
-            <option value="STRING">TEXT (алиас)</option>
-          </optgroup>
-          
-          <optgroup label="Бинарные типы">
-            <option value="BYTEA">BYTEA (binary)</option>
-          </optgroup>
-          
-          <optgroup label="Логические типы">
-            <option value="BOOLEAN">BOOLEAN</option>
-          </optgroup>
-          
-          <optgroup label="Дата и время">
-            <option value="DATE">DATE</option>
-            <option value="TIME">TIME</option>
-            <option value="TIMESTAMP">TIMESTAMP</option>
-            <option value="TIMESTAMPTZ">TIMESTAMP WITH TIME ZONE</option>
-            <option value="INTERVAL">INTERVAL</option>
-          </optgroup>
-          
-          <optgroup label="Специальные типы">
-            <option value="UUID">UUID</option>
-            <option value="JSON">JSON</option>
-            <option value="JSONB">JSONB</option>
-          </optgroup>
-        </select>
+          <option value="INTEGER">INTEGER</option>
+          <option value="BIGINT">BIGINT</option>
+          <option value="DECIMAL">DECIMAL</option>
+          <option value="NUMERIC">NUMERIC</option>
+          <option value="FLOAT">FLOAT</option>
+        </optgroup>
         
-      {isForeignKey && (
-  <i className="bi bi-link-45deg text-primary ms-1" title="Foreign Key"></i>
-)}
+        <optgroup label="Символьные типы">
+          <option value="TEXT">TEXT</option>
+        </optgroup>
 
-      {/* Иконки вместо чекбоксов */}
-      <div className="d-flex gap-1">
-        {/* Primary Key */}
-        <button
-          className={`btn btn-sm ${attribute.isPrimary ? 'btn-success' : 'btn-outline-secondary'}`}
-          onClick={() => onUpdate(attribute.id, 'isPrimary', !attribute.isPrimary)}
-          title="Primary Key"
-        >
-          <i className="bi bi-key"> </i>
-        </button>
+        <optgroup label="Логические типы">
+          <option value="BOOLEAN">BOOLEAN</option>
+        </optgroup>
         
-        {/* Unique */}
-        <button
-          className={`btn btn-sm ${attribute.isUnique ? 'btn-success' : 'btn-outline-secondary'}`}
-          onClick={() => onUpdate(attribute.id, 'isUnique', !attribute.isUnique)}
-          title="Unique"
-        >
-          U
-        </button>
+        <optgroup label="Дата и время">
+          <option value="DATE">DATE</option>
+        </optgroup>
         
-        {/* Nullable */}
-        <button
-          className={`btn btn-sm ${attribute.isNullable ? 'btn-outline-secondary' : 'btn-success'}`}
-          onClick={() => onUpdate(attribute.id, 'isNullable', !attribute.isNullable)}
-          title="Not NULL"
-        >
-          N
-        </button>
-      </div>
+      </select>
+      
+      {isForeignKey && (
+        <i className="bi bi-link-45deg text-primary ms-1" title="Foreign Key"></i>
+      )}
+
       <button 
         className="btn btn-sm btn-outline-danger"
         onClick={() => onRemove(attribute.id)}
