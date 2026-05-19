@@ -196,6 +196,8 @@ const executeQuery = async (customSQL = null) => {
     
     try {
         const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+
+        console.log(databaseId)
         
         // 1. Выполняем SQL для отображения результата
         const response = await fetch(`${API_BASE_URL}/api/execute-final-solution`, {
@@ -205,7 +207,7 @@ const executeQuery = async (customSQL = null) => {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
             body: JSON.stringify({
-                database_id: databaseId,
+                database_id: Number(databaseId),
                 sql_query: sqlToExecute,
                 test_index: 0
             })

@@ -1,26 +1,8 @@
-import React, { useCallback, useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 
 const AttributeItem = React.memo(({ attribute, onUpdate, onRemove, nodeId, updateEdgeAttributes }) => {
 
   const [prevName, setPrevName] = useState(attribute.name);
-  const [showParams, setShowParams] = useState(false);
-  const [param1, setParam1] = useState('');
-  const [param2, setParam2] = useState('');
-  
-  useEffect(() => {
-    const match = attribute.type.match(/^(\w+)\(([^)]+)\)$/);
-    if (match) {
-      const [, baseType, params] = match;
-      const paramsArray = params.split(',').map(p => p.trim());
-      setParam1(paramsArray[0] || '');
-      setParam2(paramsArray[1] || '');
-      setShowParams(true);
-    } else {
-      setShowParams(false);
-      setParam1('');
-      setParam2('');
-    }
-  }, [attribute.type]);
 
   const handleChange = useCallback((field) => (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -45,20 +27,16 @@ const AttributeItem = React.memo(({ attribute, onUpdate, onRemove, nodeId, updat
     const selectedBaseType = newType.split('(')[0];
     
     if (typesWithParams.includes(selectedBaseType)) {
-      setShowParams(true);
       const match = newType.match(/\(([^)]+)\)/);
       if (match) {
-        const params = match[1].split(',').map(p => p.trim());
-        setParam1(params[0] || '');
-        setParam2(params[1] || '');
+        
+
         onUpdate(attribute.id, 'type', newType);
       } else {
         onUpdate(attribute.id, 'type', selectedBaseType);
       }
     } else {
-      setShowParams(false);
-      setParam1('');
-      setParam2('');
+
       onUpdate(attribute.id, 'type', newType);
     }
   }, [onUpdate, attribute.id]);

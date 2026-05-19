@@ -55,8 +55,6 @@ func GetTaskSolutions(c *gin.Context) {
     // Структура для ответа
     type SuspiciousLogInfo struct {
         Reasons    string    `json:"reasons"`
-        IPAddress  string    `json:"ip_address"`
-        UserAgent  string    `json:"user_agent"`
         DetectedAt time.Time `json:"detected_at"`
         SolutionSQL string   `json:"solution_sql"`
     }
@@ -100,8 +98,6 @@ func GetTaskSolutions(c *gin.Context) {
             for _, activity := range activities {
                 logInfo := SuspiciousLogInfo{
                     Reasons:    activity.Reasons,
-                    IPAddress:  activity.IPAddress,
-                    UserAgent:  activity.UserAgent,
                     DetectedAt: activity.DetectedAt,
                     SolutionSQL: activity.SolutionSQL,
                 }

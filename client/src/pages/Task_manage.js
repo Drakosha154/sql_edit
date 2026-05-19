@@ -35,6 +35,7 @@ export default function Task_manage({
     fields: {}
   });
 
+
   // Получаем список таблиц из nodes
   const tables = nodes.map(node => ({
     name: node.data.label,
@@ -46,6 +47,7 @@ export default function Task_manage({
       isPrimary: attr.isPrimary || false
     }))
   }));
+  
 
   // Обработчик выбора таблицы
   const handleTableSelect = (e) => {
@@ -287,9 +289,10 @@ const generateRandomData = () => {
   const currentTableData = selectedTable ? tableData[activeDataSet]?.[selectedTable] || [] : [];
 
   // Функция для парсинга SQL вставки данных
-  const parseInsertSQL = (sql) => {
+const parseInsertSQL = (sql) => {
   try {
     const result = {};
+    const cleanSQL = sql.replace(/"?([a-zA-Z_][a-zA-Z0-9_]*)"?/g, '$1');
     const insertRegex = /INSERT\s+INTO\s+([^\s(]+)\s*\(([^)]+)\)\s*VALUES\s*([^;]+);/gi;
     
     let match;
@@ -518,6 +521,7 @@ const generateRandomData = () => {
                     </tr>
                   </thead>
                   <tbody>
+                    {console.log(currentTableData)}
                     {currentTableData.map((row, i) => (
                       <tr key={i}>
                         {tables.find(t => t.name === selectedTable).columns

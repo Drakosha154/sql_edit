@@ -2,11 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import ReactFlow, {
   Controls,
   Background,
-  addEdge,
   applyEdgeChanges,
   applyNodeChanges,
   MiniMap,
-  Position,
 } from 'reactflow';
 
 import 'reactflow/dist/style.css';
@@ -15,10 +13,7 @@ import {
   Modal, 
   Button, 
   Form, 
-  Table, 
-  InputGroup, 
   Container,
-  Card,
   Alert,
   Badge  // 🆕 ДОБАВИТЬ
 } from 'react-bootstrap';
@@ -27,18 +22,14 @@ import { Tab, Nav, Row, Col } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import "bootstrap-icons/font/bootstrap-icons.css";
 import './ERDEditor.css';
-import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import EntityNode from '../components/EntityNode';
 import CustomEdge from '../components/CustomEdge';
 import Task_manage from './Task_manage';
-import TaskPreview from './TaskPreview';
-import SolutionView from './SolutionView';
 import DatabaseSaveButton from '../components/DatabaseSaveButton'
 import { useDagreLayout } from '../utils/useDagreLayout';
 
 import { parseSQL } from '../utils/sqlParser';
-import { csvToJson } from '../utils/csvToJson';
 import TutorialButton from '../components/TutorialButton';
 import { useTutorialAutoStart, startTutorialManually } from '../hooks/useTutorialAutoStart';
 import { createDatabaseSteps } from '../config/tutorialSteps';
@@ -78,7 +69,6 @@ const createEntityNode = (entityName, attributes, position) => {
 const API_BASE_URL = process.env.REACT_APP_API_URL
 
 export default function CreateDatabase() {
-  const navigate = useNavigate();
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [activeNodeId, setActiveNodeId] = useState(null);
@@ -90,12 +80,9 @@ export default function CreateDatabase() {
   });
   const [activeDataSet, setActiveDataSet] = useState('main');
   const [dataSets, setDataSets] = useState(['main']);
-  const [sqlCodeInsert, setSqlCodeInsert] = useState('');
   const [sqlCode, setSqlCode] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
   const [importError, setImportError] = useState(null);
-  const [taskDescription, setTaskDescription] = useState('');
-  const [result, setResult] = useState([]);
   const [csvDecision, setCsvDecision] = useState('');
   const [selectedColumns, setSelectedColumns] = useState([]);
   const tutorialContext = useTutorial();
@@ -176,9 +163,11 @@ const parseInsertSQL = (sql) => {
     let match;
     while ((match = insertRegex.exec(sql)) !== null) {
       const tableName = match[1].trim();
-      const columns = match[2].split(',').map(col => col.trim());
+      console.log(tableName)
+      const columns = match[2].split(',').map(col => col.trim().replaceAll('"', ''));
+      console.log(columns)
       const valuesStr = match[3].trim();
-      
+      console.log(valuesStr)
       
       const valueRegex = /\(([^)]+)\)/g;
       const rows = [];
@@ -794,10 +783,6 @@ const isNumericType = (type) => {
   return numericTypes.includes(type.toLowerCase());
 };
 
-const showGeneratedSQL = () => {
-  setSqlCodeInsert(generateSQL());
-};
-
 const SQLModal = ({ show, sql, onClose }) => {
   const copyToClipboard = () => {
     navigator.clipboard.writeText(sql);
@@ -810,7 +795,7 @@ const SQLModal = ({ show, sql, onClose }) => {
       </Modal.Header>
       <Modal.Body>
         <pre 
-        class='text-bg-light'
+        className='text-bg-light'
         style={{ 
           maxHeight: '60vh',
           overflow: 'auto',
@@ -917,16 +902,22 @@ const handleImportSQL = (sql = sqlCode) => {
 
       
 
-      for (const tableName in parsedData) {
-      if (parsedData.hasOwnProperty(tableName)) {
-        // Объединяем существующие данные с новыми для каждой таблицы
-        updatedTableData = [
-          ...parsedData[tableName]
-        ];
-      }
-    }
+      for (const [tableName, newData] of Object.entries(parsedData)) {
+            
+            // Действительно объединяем данные
+            if (Array.isArray(updatedTableData["main"][tableName])) {
+                // Если таблица уже существует, добавляем новые записи
+                updatedTableData["main"][tableName] = [
+                    ...updatedTableData["main"][tableName],
+                    ...newData
+                ];
+            } else {
+                // Если таблицы нет, создаем её с новыми данными
+                updatedTableData["main"][tableName] = [...newData];
+            }
+        }
 
-      
+
       setTableData(updatedTableData);
       setSqlCode('');
       setShowImportModal(false);
@@ -962,16 +953,14 @@ const flowContent = useMemo(() => (
   //конец sql
 
   return (
-    <div class='erd-container d-flex flex-column vh-100 overflow-hidden'>
-    <div class='p-2 border-bottom'>
+    <div className='erd-container d-flex flex-column vh-100 overflow-hidden'>
+    <div className='p-2 border-bottom'>
       <div data-tour="save-button">
         <DatabaseSaveButton 
           nodes={nodes}
           tableData={tableData}
           generateSQL={generateSQL}
           generateDataInsertSQL={generateDataInsertSQL}
-          taskDescription={taskDescription}
-          result={result}
           setCsvDecision={setCsvDecision}
           csvDecision={csvDecision}
         />
@@ -1052,8 +1041,6 @@ const flowContent = useMemo(() => (
                 setActiveTab={setSidebarActiveTab}
                 tableData={tableData}
                 setTableData={setTableData}
-                taskDescription={taskDescription}
-                result={result}
                 setCsvDecision={setCsvDecision}
                 csvDecision={csvDecision}
                 setSelectedColumns={setSelectedColumns}
@@ -1144,6 +1131,7 @@ const flowContent = useMemo(() => (
       </Col>
     </Row>
   </Container>
+
   
   <Task_manage 
     nodes={nodes}

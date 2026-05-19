@@ -62,8 +62,6 @@ type Solutions_list struct {
 	DecisionSQL string    `json:"decision_sql"`
 	IsCorrect   bool      `json:"is_correct"`
 	Metadata    string    `json:"metadata" gorm:"type:text"` // JSON с метаданными
-	IPAddress   string    `json:"ip_address"`
-	UserAgent   string    `json:"user_agent"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 
@@ -78,8 +76,6 @@ type SuspiciousActivity struct {
 	TaskID      int       `json:"task_id"`
 	SolutionSQL string    `json:"solution_sql" gorm:"type:text"`
 	Reasons     string    `json:"reasons"` // Причины подозрительности
-	IPAddress   string    `json:"ip_address"`
-	UserAgent   string    `json:"user_agent"`
 	DetectedAt  time.Time `json:"detected_at"`
 }
 

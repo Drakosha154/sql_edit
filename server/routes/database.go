@@ -524,9 +524,6 @@ func CheckSolutionWithSchema(c *gin.Context) {
 		// Сохраняем метаданные как JSON
 		Metadata: convertMetadataToJSON(request.Metadata),
 		// Сохраняем IP адрес пользователя
-		IPAddress: c.ClientIP(),
-		// Сохраняем User-Agent
-		UserAgent: c.Request.UserAgent(),
 	}
 
 	var existingTask models.Solutions_list
