@@ -429,16 +429,16 @@ export default function Profile() {
                             {taskSolutions.length > 0 ? (
                                 <>
                                     <div className="mb-3">
-                                        <Badge bg="primary" className="me-2">
+                                        <Badge bg="primary-subtle" text="primary-emphasis" className="me-2">
                                             Всего решений: {taskSolutions.length}
                                         </Badge>
-                                        <Badge bg="success" className="me-2">
+                                        <Badge bg="success-subtle" text="success-emphasis" className="me-2">
                                             Верных: {taskSolutions.filter(s => s.is_correct).length}
                                         </Badge>
-                                        <Badge bg="warning" className="me-2">
+                                        <Badge bg="warning-subtle" text="warning-emphasis" className="me-2">
                                             Подозрительных пользователей: {taskSolutions.filter(s => s.has_suspicious).length}
                                         </Badge>
-                                        <Badge bg="danger" className="me-2">
+                                        <Badge bg="danger-subtle" text="danger-emphasis" className="me-2">
                                             Всего логов списывания: {taskSolutions.reduce((total, s) => total + getSuspiciousLogsCount(s), 0)}
                                         </Badge>
                                     </div>
@@ -462,7 +462,7 @@ export default function Profile() {
                                                             {solution.is_correct ? "Верно" : "Неверно"}
                                                         </Badge>
                                                         {solution.has_suspicious && (
-                                                            <Badge bg="warning" className="ms-1">
+                                                            <Badge bg="warning-subtle" text="warning-emphasis" className="ms-1">
                                                                 {getSuspiciousLogsCount(solution)} нарушений
                                                             </Badge>
                                                         )}
@@ -470,7 +470,10 @@ export default function Profile() {
                                                     <td>{new Date(solution.created_at).toLocaleString()}</td>
                                                     <td>
                                                         {solution.has_suspicious ? (
-                                                            <Badge bg={solution.suspicious_logs.length > 1 ? "danger" : "warning"}>
+                                                            <Badge
+                                                                bg={solution.suspicious_logs.length > 1 ? "danger-subtle" : "warning-subtle"}
+                                                                text={solution.suspicious_logs.length > 1 ? "danger-emphasis" : "warning-emphasis"}
+                                                            >
                                                                 {getSuspiciousLogsCount(solution)} логов
                                                             </Badge>
                                                         ) : (
@@ -479,10 +482,10 @@ export default function Profile() {
                                                     </td>
                                                     <td>
                                                         {solution.has_suspicious ? (
-                                                            <Button 
-                                                                variant="outline-warning" 
+                                                            <Button
                                                                 size="sm"
                                                                 onClick={() => showSuspiciousLogs(solution)}
+                                                                className="text-warning-emphasis border-warning-subtle bg-warning-subtle"
                                                             >
                                                                 Посмотреть все логи ({getSuspiciousLogsCount(solution)})
                                                             </Button>
@@ -514,9 +517,6 @@ export default function Profile() {
                                 {selectedSolution && (
                                     <span className="ms-2">
                                         {selectedSolution.username}
-                                        <Badge bg="warning" className="ms-2">
-                                            {getSuspiciousLogsCount(selectedSolution)} логов
-                                        </Badge>
                                     </span>
                                 )}
                             </Modal.Title>
@@ -547,7 +547,7 @@ export default function Profile() {
                                                 </p>
                                             </Col>
                                         </Row>
-                                        <div className="mt-2 bg-dark text-light p-3 rounded">
+                                        <div className="mt-2 p-3 rounded border">
                                             <pre className="mb-0" style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>
                                                 {selectedSolution.decision_sql || "SQL запрос отсутствует"}
                                             </pre>
@@ -588,7 +588,7 @@ export default function Profile() {
                                                     {log.solution_sql && (
                                                         <div className="mb-3">
                                                             <h6>SQL запрос из лога:</h6>
-                                                            <div className="bg-secondary text-light p-3 rounded">
+                                                            <div className="p-3 rounded border">
                                                                 <pre className="mb-0" style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>
                                                                     {log.solution_sql}
                                                                 </pre>

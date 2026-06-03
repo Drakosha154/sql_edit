@@ -46,7 +46,7 @@ func GetAdminStats(c *gin.Context) {
 	database.DB.Model(&models.User{}).Count(&stats.TotalUsers)
 	
 	// Общее количество заданий
-	database.DB.Model(&models.Database_lists{}).Count(&stats.TotalTasks)
+	database.DB.Model(&models.Tasks_list{}).Count(&stats.TotalTasks)
 	
 	// Общее количество решений
 	database.DB.Model(&models.Solutions_list{}).Count(&stats.TotalSolutions)
@@ -155,9 +155,9 @@ func DeleteUser(c *gin.Context) {
 
 // GetAllTasks возвращает все задания
 func GetAllTasks(c *gin.Context) {
-	var tasks []models.Database_lists
+	var tasks []models.Tasks_list
 	result := database.DB.
-		Preload("Creator", func(db *gorm.DB) *gorm.DB {
+		Preload("User", func(db *gorm.DB) *gorm.DB {
 			return db.Select("id", "username")
 		}).
 		Order("created_at DESC").
@@ -184,11 +184,12 @@ func GetAllTasks(c *gin.Context) {
 		database.DB.Model(&models.Solutions_list{}).Where("task_id = ?", task.ID).Count(&solutionsCount)
 
 		response[i] = TaskResponse{
-			ID:           task.ID,
-			Name:         task.Database_name,
-			CreatorID:    task.ID_creator,
-			CreatorName:  task.Creator.Username,
-			CreatedAt:    task.CreatedAt.Format("2006-01-02 15:04"),
+			ID:             task.ID,
+			Name:           task.Task_name,
+			TaskText:       task.Task_formulation,
+			CreatorID:      task.ID_creator,
+			CreatorName:    task.User.Username,
+			CreatedAt:      task.CreatedAt.Format("2006-01-02 15:04"),
 			SolutionsCount: solutionsCount,
 		}
 	}
@@ -206,7 +207,7 @@ func DeleteTask(c *gin.Context) {
 		return
 	}
 
-	result := database.DB.Delete(&models.Database_lists{}, id)
+	result := database.DB.Delete(&models.Tasks_list{}, id)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task"})
 		return

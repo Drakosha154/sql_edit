@@ -19,6 +19,9 @@ export default function Navbar({ isAuth, setAuth }) {
           <ul className="navbar-nav">
             {!isAuth ? (
               <>
+                <li className="nav-item" data-tour="navbar-theme">
+                  <ThemeToggle />
+                </li>
                 <li className="nav-item">
                   <NavLink to="/login" className="nav-link">Войти</NavLink>
                 </li>

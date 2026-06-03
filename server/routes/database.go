@@ -193,7 +193,35 @@ func DelDatabasesByID(c *gin.Context) {
 		return
 	}
 
-	if err := database.DB.Delete(&db).Error; err != nil {
+	// Удаляем базу данных вместе с созданными по ней заданиями и их решениями
+	if err := database.DB.Transaction(func(tx *gorm.DB) error {
+		// Находим задания, созданные по этой базе данных
+		var taskIDs []uint
+		if err := tx.Model(&models.Tasks_list{}).
+			Where("id_database = ?", id).
+			Pluck("id", &taskIDs).Error; err != nil {
+			return err
+		}
+
+		if len(taskIDs) > 0 {
+			// Удаляем решения этих заданий
+			if err := tx.Where("task_id IN ?", taskIDs).
+				Delete(&models.Solutions_list{}).Error; err != nil {
+				return err
+			}
+			// Удаляем сами задания
+			if err := tx.Where("id_database = ?", id).
+				Delete(&models.Tasks_list{}).Error; err != nil {
+				return err
+			}
+		}
+
+		// Удаляем саму базу данных
+		if err := tx.Delete(&db).Error; err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete database record"})
 		return
 	}
@@ -221,7 +249,16 @@ func DelTasksByID(c *gin.Context) {
 		return
 	}
 
-	if err := database.DB.Delete(&task).Error; err != nil {
+	// Удаляем задание вместе со всеми его решениями
+	if err := database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("task_id = ?", id).Delete(&models.Solutions_list{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Delete(&task).Error; err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task record"})
 		return
 	}
