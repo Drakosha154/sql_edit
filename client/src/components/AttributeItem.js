@@ -11,7 +11,7 @@ const AttributeItem = React.memo(({ attribute, onUpdate, onRemove, nodeId, updat
       return;
     }
     if (field === 'name') {
-      updateEdgeAttributes(nodeId, prevName, value);
+      updateEdgeAttributes(nodeId, attribute.id, prevName, value);
       setPrevName(value);
     }
     onUpdate(attribute.id, field, value);

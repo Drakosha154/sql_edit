@@ -214,14 +214,14 @@ useEffect(() => {
           const data = await response.json();
           
           // Загружаем схему
-          if (data.database_create_text) {
-            handleImportSQL(data.database_create_text);
+          if (data.schema) {
+            handleImportSQL(data.schema);
           }
-          
+
           // 🆕 Загружаем основной набор данных
           let newTableData = { main: {} };
-          if (data.database_insert_text) {
-            const parsedMainData = parseInsertSQL(data.database_insert_text);
+          if (data.data) {
+            const parsedMainData = parseInsertSQL(data.data);
             newTableData.main = parsedMainData;
           }
           
@@ -272,33 +272,6 @@ useEffect(() => {
       };
   }, [registerTabSwitcher, unregisterTabSwitcher]);
     
-  useEffect(() => {
-    const fetchUserDatabases = async () => {
-            try {
-              const response = await fetch(`${API_BASE_URL}/api/databases/${id}`, {
-                headers: {
-                  'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-              });
-            
-            // Проверяем, что ответ JSON
-              const contentType = response.headers.get('content-type');
-              if (!contentType || !contentType.includes('application/json')) {
-                const text = await response.text();
-                throw new Error(`Ожидался JSON, но получен: ${text.substring(0, 100)}...`);
-              }
-            
-            const data = await response.json();
-              handleImportSQL(data.schema);
-              handleImportSQLInsert(data.data);
-
-        } catch (error) {
-              console.error("Ошибка загрузки:", error);
-              alert("Ошибка загрузки: " + error.message);
-            }
-    };
-    fetchUserDatabases();  
-}, []);
 
 
 
@@ -362,24 +335,37 @@ useEffect(() => {
     setEdges(eds => eds.filter(e => e.id !== edgeId));
   }, []);
 
-  const updateEdgeAttributes = useCallback((nodeId, oldAttrName, newAttrName) => {
+  const updateEdgeAttributes = useCallback((nodeId, attrId, oldName, newName) => {
+  // (а) Обновляем имена столбцов в data рёбер, сопоставляя по handle (= attr.id).
+  // Handle не трогаем — attr.id стабилен при переименовании.
   setEdges(eds => eds.map(edge => {
-    // Обновляем sourceHandle если он относится к измененному атрибуту
-    if (edge.source === nodeId && edge.sourceHandle.includes(oldAttrName)) {
-      return {
-        ...edge,
-        sourceHandle: edge.sourceHandle.replace(oldAttrName, newAttrName)
-      };
+    if (edge.source === nodeId && edge.sourceHandle === attrId) {
+      return { ...edge, data: { ...edge.data, sourceAttr: newName } };
     }
-    // Обновляем targetHandle если он относится к измененному атрибуту
-    if (edge.target === nodeId && edge.targetHandle.includes(oldAttrName)) {
-      return {
-        ...edge,
-        targetHandle: edge.targetHandle.replace(oldAttrName, newAttrName)
-      };
+    if (edge.target === nodeId && edge.targetHandle === attrId) {
+      return { ...edge, data: { ...edge.data, targetAttr: newName } };
     }
     return edge;
   }));
+
+  // (б) Мигрируем ключ столбца в данных таблиц по всем наборам (main/test1/...)
+  if (oldName === newName) return;
+  setTableData(prev => {
+    const next = { ...prev };
+    Object.keys(next).forEach(dataSet => {
+      const rows = next[dataSet]?.[nodeId];
+      if (!Array.isArray(rows)) return;
+      next[dataSet] = {
+        ...next[dataSet],
+        [nodeId]: rows.map(row => {
+          if (!(oldName in row)) return row;
+          const { [oldName]: val, ...rest } = row;
+          return { ...rest, [newName]: val };
+        })
+      };
+    });
+    return next;
+  });
 }, []);
 
 const updateEdgesOnNodeRename = useCallback((oldNodeId, newNodeId, newLabel) => {
@@ -583,6 +569,15 @@ const onConnect = useCallback((params) => {
       return;
     }
 
+    // Проверяем, что к этому FK ещё нет связи (запрет дубликатов)
+    const alreadyLinked = edges.some(
+      e => e.target === targetNode.id && e.targetHandle === params.targetHandle
+    );
+    if (alreadyLinked) {
+      alert('К этому внешнему ключу уже привязана связь. Сначала удалите существующую.');
+      return;
+    }
+
     // Создаем связь с существующим атрибутом
     const newEdge = {
       id: `edge-${params.source}-${params.sourceHandle}-${targetNode.id}-${params.targetHandle}`,
@@ -604,7 +599,7 @@ const onConnect = useCallback((params) => {
     
     setEdges(prevEdges => [...prevEdges, newEdge]);
   }
-}, [nodes]);
+}, [nodes, edges]);
 
   const onNodesChange = useCallback(
     changes => setNodes(nds => applyNodeChanges(changes, nds)),
@@ -1133,8 +1128,9 @@ const flowContent = useMemo(() => (
   </Container>
 
   
-  <Task_manage 
+  <Task_manage
     nodes={nodes}
+    edges={edges}
     tableData={tableData}
     setTableData={setTableData}
     activeDataSet={activeDataSet}

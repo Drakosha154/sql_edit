@@ -17,6 +17,7 @@ import {
 } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import "bootstrap-icons/font/bootstrap-icons.css";
+import './Resolve.css';
 import DatabaseVisualPreview from '../components/DatabaseVisualPreview';
 import { csvToJson } from '../utils/csvToJson';
 import TutorialButton from '../components/TutorialButton';
@@ -537,17 +538,17 @@ export default function Resolve() {
   const safeSolutionCode = solutionCode || '';
 
   return (
-    <div className="overflow-x-hidden">
+    <div className="overflow-x-hidden resolve-page">
       <Container className="py-4 overflow-auto">
         <Row>
           <Col>
             <Card>
-              <Card.Header className="bg-primary text-white">
+              <Card.Header className="resolve-header">
                 <h5 className="mb-0 d-flex align-items-center">
                   <i className="bi bi-database me-2"></i>
                   <span>Решение задания "{taskName}"</span>
                   {hasExistingSolution && (
-                    <Badge bg="info" className="ms-2">
+                    <Badge bg="info-subtle" className="ms-2 text-info-emphasis border border-info-subtle">
                       <i className="bi bi-save me-1"></i> Есть сохраненное решение
                     </Badge>
                   )}
@@ -558,7 +559,7 @@ export default function Resolve() {
                 {/* Условие задачи */}
                 <div className="task-section mb-4" data-tour="task-description">
                   <div className="d-flex align-items-center mb-3">
-                    <Badge bg="info" className="me-2">
+                    <Badge bg="info-subtle" className="me-2 text-info-emphasis border border-info-subtle">
                       <i className="bi bi-question-circle"></i>
                     </Badge>
                     <h4 className="mb-0">Условие задачи</h4>
@@ -603,7 +604,7 @@ export default function Resolve() {
                 {/* Редактор решения с защитой */}
                 <div className="solution-section mb-4">
                   <div className="d-flex align-items-center mb-3">
-                    <Badge bg="success" className="me-2">
+                    <Badge bg="success-subtle" className="me-2 text-success-emphasis border border-success-subtle">
                       <i className="bi bi-code-slash"></i>
                     </Badge>
                     <h4 className="mb-0">Ваше решение</h4>
@@ -635,7 +636,7 @@ export default function Resolve() {
                         </Badge>
                       )} */}
                       {hasExistingSolution && (
-                        <Badge bg="info" className="ms-2">
+                        <Badge bg="info-subtle" className="ms-2 text-info-emphasis border border-info-subtle">
                           <i className="bi bi-save me-1"></i> Сохранено
                         </Badge>
                       )}
@@ -658,11 +659,11 @@ export default function Resolve() {
                   </Form.Group>
 
                   <div className="d-flex gap-2">
-                    <Button 
-                      variant="success" 
+                    <Button
+                      variant="light"
                       onClick={checkSolution}
                       disabled={isChecking || !safeSolutionCode.trim() || !isWindowActive}
-                      className="flex-grow-1"
+                      className="flex-grow-1 btn-soft-success"
                       data-tour="check-button"
                     >
                       {isChecking ? (
@@ -698,7 +699,7 @@ export default function Resolve() {
 
                 {/* Результаты проверки */}
                 {importError && (
-                  <Alert variant="danger" className="mb-3">
+                  <Alert variant="danger" className="mb-3 alert-soft-danger">
                     <i className="bi bi-exclamation-triangle me-2"></i>
                     {importError}
                   </Alert>
@@ -707,16 +708,16 @@ export default function Resolve() {
                 {resultSolution && (
                   <div className="result-section mt-4">
                     <div className="d-flex align-items-center mb-3">
-                      <Badge 
-                        bg={resultSolution.success ? "success" : "danger"} 
-                        className="me-2"
+                      <Badge
+                        bg={resultSolution.success ? "success-subtle" : "danger-subtle"}
+                        className={`me-2 border ${resultSolution.success ? "text-success-emphasis border-success-subtle" : "text-danger-emphasis border-danger-subtle"}`}
                       >
                         <i className={`bi ${resultSolution.success ? "bi-check-circle" : "bi-x-circle"}`}></i>
                       </Badge>
                       <h4 className="mb-0">
                         {resultSolution.success ? "Решение верное!" : "Решение требует доработки"}
                         {resultSolution.is_suspicious && (
-                          <Badge bg="warning" className="ms-2">
+                          <Badge bg="warning-subtle" className="ms-2 text-warning-emphasis border border-warning-subtle">
                             <i className="bi bi-shield-exclamation me-1"></i> Подозрительная активность
                           </Badge>
                         )}
@@ -724,35 +725,16 @@ export default function Resolve() {
                     </div>
 
                     {resultSolution.message && (
-                      <Alert variant={resultSolution.success ? "success" : "warning"}>
+                      <Alert
+                        variant={resultSolution.success ? "success" : "warning"}
+                        className={resultSolution.success ? "alert-soft-success" : "alert-soft-warning"}
+                      >
                         <i className="bi bi-info-circle me-2"></i>
                         {resultSolution.message}
                       </Alert>
                     )}
 
-                    {/* Статистика решения из метаданных */}
-                    {resultSolution.metadata_stats && (
-                      <Alert variant="secondary" className="mb-3">
-                        <h6 className="mb-2">
-                          <i className="bi bi-graph-up me-2"></i>
-                          Статистика решения:
-                        </h6>
-                        <div className="row small">
-                          <div className="col-md-3">
-                            <i className="bi bi-clock me-1"></i> Время: {resultSolution.metadata_stats.timeSpent} сек
-                          </div>
-                          <div className="col-md-3">
-                            <i className="bi bi-clipboard me-1"></i> Копирования: {resultSolution.metadata_stats.copyCount}
-                          </div>
-                          <div className="col-md-3">
-                            <i className="bi bi-clipboard-plus me-1"></i> Вставки: {resultSolution.metadata_stats.pasteCount}
-                          </div>
-                          <div className="col-md-3">
-                            <i className="bi bi-window-dock me-1"></i> Смен вкладок: {resultSolution.metadata_stats.tabSwitches}
-                          </div>
-                        </div>
-                      </Alert>
-                    )}
+                    
 
                     {resultSolution.success && resultSolution.user_result && resultSolution.user_result.length > 0 && (
                       <>
@@ -763,7 +745,7 @@ export default function Resolve() {
                         
                         <div className="table-responsive">
                           <Table striped bordered hover className="mb-0">
-                            <thead className="table-dark">
+                            <thead className="resolve-thead">
                               <tr>
                                 {columnsResult.map((column, index) => (
                                   <th key={index}>
@@ -805,7 +787,7 @@ export default function Resolve() {
                           {resultSolution.user_result.length > 0 ? (
                           <div className="table-responsive">
                             <Table striped bordered hover className="mb-0">
-                              <thead className="table-dark">
+                              <thead className="resolve-thead">
                                 <tr>
                                   {userColumnsResult.map((column, index) => (
                                     <th key={index}>
@@ -846,7 +828,7 @@ export default function Resolve() {
                             <div className="p-2">
                             <div className="table-responsive">
                               <Table striped bordered hover className="mb-0">
-                                <thead className="table-dark">
+                                <thead className="resolve-thead">
                                   <tr>
                                     {columnsResult.map((column, index) => (
                                       <th key={index}>
@@ -878,7 +860,7 @@ export default function Resolve() {
                     {/* Дополнительные тесты (если есть) */}
 {resultSolution.additional_tests && resultSolution.additional_tests.length > 0 && (
   <Card className="mt-3">
-    <Card.Header className="bg-light">
+    <Card.Header>
       <h6 className="mb-0">
         <i className="bi bi-list-check me-2"></i>
         Дополнительные проверочные тесты
@@ -886,10 +868,10 @@ export default function Resolve() {
     </Card.Header>
     <Card.Body>
       {resultSolution.additional_tests.map((test, index) => (
-        <Alert 
-          key={index} 
+        <Alert
+          key={index}
           variant={test.success ? "success" : "danger"}
-          className="mb-2 d-flex align-items-center"
+          className={`mb-2 d-flex align-items-center ${test.success ? "alert-soft-success" : "alert-soft-danger"}`}
         >
           <div className="flex-grow-1">
             <strong>
@@ -904,13 +886,7 @@ export default function Resolve() {
           </div>
         </Alert>
       ))}
-      
-      {resultSolution.additional_tests.every(test => test.success) && (
-        <Alert variant="info" className="mb-0 mt-2">
-          <i className="bi bi-info-circle me-2"></i>
-          Все дополнительные тесты пройдены успешно!
-        </Alert>
-      )}
+    
     </Card.Body>
   </Card>
 )}

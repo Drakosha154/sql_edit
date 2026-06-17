@@ -26,6 +26,7 @@ func SaveDatabase(c *gin.Context) {
 		Name         string `json:"Name"`
 		Schema       string `json:"Schema"`
 		SchemaInsert string `json:"SchemaInsert"`
+		TestDataSets string `json:"test_data_sets"`
 	}
 
 	if err := c.ShouldBindJSON(&dbInput); err != nil {
@@ -38,6 +39,7 @@ func SaveDatabase(c *gin.Context) {
 		Database_name:        dbInput.Name,
 		Database_create_text: dbInput.Schema,
 		Database_insert_text: dbInput.SchemaInsert,
+		TestDataSets:         dbInput.TestDataSets,
 	}
 
 	if err := database.DB.Create(&db).Error; err != nil {
@@ -98,11 +100,12 @@ func GetDatabasesByID(c *gin.Context) {
 
 	// Формируем ответ
 	c.JSON(http.StatusOK, gin.H{
-		"id":        db.ID,
-		"name":      db.Database_name,
-		"schema":    db.Database_create_text,
-		"data":      db.Database_insert_text,
-		"createdAt": db.CreatedAt,
+		"id":             db.ID,
+		"name":           db.Database_name,
+		"schema":         db.Database_create_text,
+		"data":           db.Database_insert_text,
+		"test_data_sets": db.TestDataSets,
+		"createdAt":      db.CreatedAt,
 	})
 }
 
@@ -111,11 +114,12 @@ func SaveTask(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 
 	var taskInput struct {
-		Name        string `json:"Name"`
-		Task        string `json:"Task"`
-		Decision    string `json:"Decision"`
-		Id_database uint   `json: "Id_database"`
-		SqlQuery    string `json: "SqlQuery"`
+		Name            string `json:"Name"`
+		Task            string `json:"Task"`
+		Decision        string `json:"Decision"`
+		Id_database     uint   `json:"Id_database"`
+		SqlQuery        string `json:"SqlQuery"`
+		ExpectedResults string `json:"expected_results"`
 	}
 
 	if err := c.ShouldBindJSON(&taskInput); err != nil {
@@ -130,6 +134,7 @@ func SaveTask(c *gin.Context) {
 		Database_decision: taskInput.Decision,
 		ID_database:       taskInput.Id_database,
 		SqlQuery:          taskInput.SqlQuery,
+		ExpectedResults:   taskInput.ExpectedResults,
 	}
 
 	if err := database.DB.Create(&task).Error; err != nil {
@@ -684,7 +689,6 @@ func executeInSchemaWithMultipleTests(schemaName string, db_task models.Database
 
 	// 2. Дополнительные тесты (если есть)
 	var testDataSets []map[string]interface{}
-	var expectedResults []map[string]interface{}
 
 	// Парсим JSON с дополнительными тестами
 	if db_task.TestDataSets != "" && db_task.TestDataSets != "[]" {
@@ -693,22 +697,16 @@ func executeInSchemaWithMultipleTests(schemaName string, db_task models.Database
 		}
 	}
 
-	if task.ExpectedResults != "" && task.ExpectedResults != "[]" {
-		if err := json.Unmarshal([]byte(task.ExpectedResults), &expectedResults); err != nil {
-			log.Printf("Ошибка парсинга ExpectedResults: %v", err)
-		}
-	}
-
 	additionalTests := []TestResult{}
 	allTestsPassed := true
 
-	// Проверяем каждый дополнительный тест
-	minLen := len(testDataSets)
-	if len(expectedResults) < minLen {
-		minLen = len(expectedResults)
-	}
+	// Эталонный запрос задания. Если он не задан — проверять доп. наборы не с чем,
+	// поэтому пропускаем их (полагаемся только на основной тест).
+	referenceSQL := strings.TrimSpace(task.SqlQuery)
 
-	for i := 0; i < minLen; i++ {
+	// Проверяем каждый дополнительный набор данных: ожидаемый результат считаем
+	// на лету, прогоняя эталонный запрос на тех же данных, что и запрос пользователя.
+	for i := 0; i < len(testDataSets) && referenceSQL != ""; i++ {
 		testName := "Дополнительный тест"
 		if name, ok := testDataSets[i]["name"].(string); ok {
 			testName = name
@@ -719,30 +717,34 @@ func executeInSchemaWithMultipleTests(schemaName string, db_task models.Database
 			insertSQL = sql
 		}
 
-		expectedCSV := ""
-		if csv, ok := expectedResults[i]["expected_csv"].(string); ok {
-			expectedCSV = csv
-		}
+		baseSchema := fmt.Sprintf("%s_test_%d", schemaName, i+1)
 
-		testSchemaName := fmt.Sprintf("%s_test_%d", schemaName, i+1)
-		testResult, testErr := executeInSchema(
-			testSchemaName,
-			db_task.Database_create_text,
-			insertSQL,
-			userSQL,
-			expectedCSV,
+		// Ожидаемый результат — эталонный запрос на данных этого набора
+		expectedRows, expErr := executeQueryInSchema(
+			baseSchema+"_exp", db_task.Database_create_text, insertSQL, referenceSQL,
+		)
+		// Результат пользователя — на тех же данных
+		userRows, userErr := executeQueryInSchema(
+			baseSchema+"_usr", db_task.Database_create_text, insertSQL, userSQL,
 		)
 
-		testSuccess := testErr == nil && testResult != nil && testResult.Success
+		testSuccess := false
 		testMessage := "Тест пройден"
+
+		if expErr != nil {
+			testMessage = fmt.Sprintf("Ошибка эталонного запроса: %v", expErr)
+		} else if userErr != nil {
+			testMessage = fmt.Sprintf("Ошибка выполнения решения: %v", userErr)
+		} else {
+			ok, msg := compareResults(userRows, expectedRows)
+			testSuccess = ok
+			if !ok {
+				testMessage = msg
+			}
+		}
 
 		if !testSuccess {
 			allTestsPassed = false
-			if testErr != nil {
-				testMessage = fmt.Sprintf("Ошибка: %v", testErr)
-			} else if testResult != nil {
-				testMessage = testResult.Message
-			}
 		}
 
 		additionalTests = append(additionalTests, TestResult{

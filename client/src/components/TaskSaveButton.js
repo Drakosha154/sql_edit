@@ -66,7 +66,7 @@ export default function TaskSaveButton({ taskDescription, result, setCsvDecision
       });
 
       if (!response.ok) throw new Error('Ошибка сохранения');
-      setCsvDecision(currentScv);
+      if (typeof setCsvDecision === 'function') setCsvDecision(currentScv);
       setShow(false);
       alert('Зданание успешно создано!');
       navigate('/profile')
@@ -100,7 +100,7 @@ export default function TaskSaveButton({ taskDescription, result, setCsvDecision
       });
 
       if (!response.ok) throw new Error('Ошибка сохранения');
-      setCsvDecision(currentScv);
+      if (typeof setCsvDecision === 'function') setCsvDecision(currentScv);
       setShow(false);
       alert('Задание успешно сохранено!');
       console.log('1111')

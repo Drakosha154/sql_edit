@@ -18,6 +18,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 
 export default function Task_manage({
   nodes,
+  edges = [],
   tableData,
   setTableData,
   activeDataSet = 'main'  // 🆕 ДОБАВИТЬ
@@ -40,11 +41,14 @@ export default function Task_manage({
   const tables = nodes.map(node => ({
     name: node.data.label,
     columns: node.data.attributes.map(attr => ({
+      id: attr.id,
       name: attr.name,
       type: attr.type,
       isAutoIncrement: attr.isAutoIncrement || false,
       isNullable: attr.isNullable !== undefined ? attr.isNullable : true,
-      isPrimary: attr.isPrimary || false
+      isPrimary: attr.isPrimary || false,
+      isUnique: attr.isUnique || false,
+      isForeignKey: attr.isForeignKey || false
     }))
   }));
   
@@ -205,82 +209,181 @@ const updateFieldConfig = (columnName, key, value) => {
   });
 };
 
+  // Находит, на какую таблицу/столбец ссылается внешний ключ columnName
+  // таблицы tableName (по связям edges). Возвращает { refTable, refColumn } или null.
+  const resolveForeignKey = (tableName, columnName) => {
+    for (const edge of edges) {
+      if (edge.target !== tableName) continue;
+      const childNode = nodes.find(n => n.data.label === edge.target);
+      const fkName = edge.data?.targetAttr
+        || childNode?.data.attributes.find(a => a.id === edge.targetHandle)?.name;
+      if (fkName !== columnName) continue;
+      const parentNode = nodes.find(n => n.data.label === edge.source);
+      const refColumn = edge.data?.sourceAttr
+        || parentNode?.data.attributes.find(a => a.id === edge.sourceHandle)?.name;
+      return { refTable: edge.source, refColumn };
+    }
+    return null;
+  };
+
+  // Доступные значения ключа родительской таблицы для внешнего ключа.
+  // Если родительский PK — AUTO_INCREMENT, его значения не хранятся в tableData,
+  // поэтому используем последовательность 1..N по числу строк (как SERIAL).
+  const getReferencableValues = (refTable, refColumn) => {
+    const rows = tableData[activeDataSet]?.[refTable] || [];
+    const refNode = nodes.find(n => n.data.label === refTable);
+    const refAttr = refNode?.data.attributes.find(a => a.name === refColumn);
+    if (refAttr?.isAutoIncrement) {
+      return rows.map((_, i) => i + 1); // SERIAL: 1..N
+    }
+    return rows
+      .map(r => r[refColumn])
+      .filter(v => v !== undefined && v !== null && v !== '');
+  };
+
+  // Генерация одного случайного значения для столбца по его типу
+  const generateValueForColumn = (col, fieldConfig) => {
+    // Целочисленные типы
+    if (isIntegerType(col.type)) {
+      const min = fieldConfig.min ?? 0;
+      const max = fieldConfig.max ?? 100;
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+    // Дробные числа
+    if (isFloatType(col.type)) {
+      const min = fieldConfig.min ?? 0;
+      const max = fieldConfig.max ?? 100;
+      const precision = fieldConfig.precision ?? 2;
+      const value = Math.random() * (max - min) + min;
+      return parseFloat(value.toFixed(precision));
+    }
+    // Логические
+    if (isBooleanType(col.type)) {
+      return String(Math.random() > 0.5);
+    }
+    // Даты
+    if (isDateType(col.type)) {
+      const dateFrom = fieldConfig.dateFrom ? new Date(fieldConfig.dateFrom) : new Date('2020-01-01');
+      const dateTo = fieldConfig.dateTo ? new Date(fieldConfig.dateTo) : new Date();
+      const randomTime = dateFrom.getTime() + Math.random() * (dateTo.getTime() - dateFrom.getTime());
+      const randomDate = new Date(randomTime);
+      return col.type.toLowerCase() === 'date'
+        ? randomDate.toISOString().split('T')[0]
+        : randomDate.toISOString();
+    }
+    // Текстовые
+    if (isTextType(col.type)) {
+      const templateType = fieldConfig.templateType || 'custom';
+      if (templateType === 'custom') {
+        const pattern = fieldConfig.customPattern || `Значение ${Math.floor(Math.random() * 1000)}`;
+        return textGenerators.custom(pattern);
+      }
+      return textGenerators[templateType]();
+    }
+    // Неизвестный тип - пустая строка
+    return '';
+  };
+
   // Генерация случайных данных
 const generateRandomData = () => {
   if (!selectedTable) return;
-  
+
   const { count, fields } = generatorConfig;
   const selectedTableObj = tables.find(t => t.name === selectedTable);
-  
-  const newData = Array(count).fill().map(() => {
+  const existingRows = tableData[activeDataSet]?.[selectedTable] || [];
+
+  // 1. Заранее разрешаем внешние ключи и проверяем, что родительские таблицы
+  //    заполнены. При пустой ссылке — предупреждаем и ничего не генерируем.
+  const fkInfo = {}; // columnName -> { values: [...] }
+  for (const col of selectedTableObj.columns) {
+    if (col.isAutoIncrement || !col.isForeignKey) continue;
+    const ref = resolveForeignKey(selectedTable, col.name);
+    if (!ref || !ref.refTable) continue;
+    const values = getReferencableValues(ref.refTable, ref.refColumn);
+    if (values.length === 0) {
+      alert(`Сначала заполните таблицу "${ref.refTable}" — на неё ссылается внешний ключ "${col.name}".`);
+      return;
+    }
+    fkInfo[col.name] = { values };
+  }
+
+  // 2. Готовим состояние для PRIMARY KEY / UNIQUE столбцов
+  //    (учитываем уже существующие значения, чтобы не было конфликтов).
+  const uniqueState = {}; // columnName -> { used: Set, nextSeq?: number, sequential: bool }
+  for (const col of selectedTableObj.columns) {
+    if (col.isAutoIncrement || col.isForeignKey) continue;
+    if (!col.isPrimary && !col.isUnique) continue;
+    const used = new Set(existingRows.map(r => r[col.name]).filter(v => v !== undefined && v !== null && v !== ''));
+    if (isIntegerType(col.type)) {
+      const maxExisting = existingRows.reduce((m, r) => Math.max(m, Number(r[col.name]) || 0), 0);
+      uniqueState[col.name] = { used, sequential: true, nextSeq: maxExisting + 1 };
+    } else {
+      uniqueState[col.name] = { used, sequential: false };
+    }
+  }
+
+  // 3. Генерируем строки
+  let aborted = false;
+  const newData = [];
+  for (let i = 0; i < count && !aborted; i++) {
     const row = {};
-    
-    selectedTableObj.columns.forEach(col => {
+
+    for (const col of selectedTableObj.columns) {
       // Пропускаем AUTO_INCREMENT поля
-      if (col.isAutoIncrement) return;
-      
+      if (col.isAutoIncrement) continue;
+
       const fieldConfig = fields[col.name] || {};
-      
-      // Целочисленные типы
-      if (isIntegerType(col.type)) {
-        const min = fieldConfig.min ?? 0;
-        const max = fieldConfig.max ?? 100;
-        row[col.name] = Math.floor(Math.random() * (max - min + 1)) + min;
+
+      // Внешний ключ — берём значение из существующих ключей родителя
+      if (fkInfo[col.name]) {
+        const values = fkInfo[col.name].values;
+        row[col.name] = values[Math.floor(Math.random() * values.length)];
+        continue;
       }
-      
-      // Дробные числа
-      else if (isFloatType(col.type)) {
-        const min = fieldConfig.min ?? 0;
-        const max = fieldConfig.max ?? 100;
-        const precision = fieldConfig.precision ?? 2;
-        const value = Math.random() * (max - min) + min;
-        row[col.name] = parseFloat(value.toFixed(precision));
-      }
-      
-      // Логические
-      else if (isBooleanType(col.type)) {
-        row[col.name] = String(Math.random() > 0.5);
-      }
-      
-      // Даты
-      else if (isDateType(col.type)) {
-        const dateFrom = fieldConfig.dateFrom ? new Date(fieldConfig.dateFrom) : new Date('2020-01-01');
-        const dateTo = fieldConfig.dateTo ? new Date(fieldConfig.dateTo) : new Date();
-        const randomTime = dateFrom.getTime() + Math.random() * (dateTo.getTime() - dateFrom.getTime());
-        const randomDate = new Date(randomTime);
-        
-        if (col.type.toLowerCase() === 'date') {
-          row[col.name] = randomDate.toISOString().split('T')[0];
-        } else {
-          row[col.name] = randomDate.toISOString();
+
+      const state = uniqueState[col.name];
+
+      // PRIMARY KEY / UNIQUE
+      if (state) {
+        // Целочисленные — последовательная нумерация
+        if (state.sequential) {
+          row[col.name] = state.nextSeq++;
+          state.used.add(row[col.name]);
+          continue;
         }
-      }
-      
-      // Текстовые
-      else if (isTextType(col.type)) {
-        const templateType = fieldConfig.templateType || 'custom';
-        if (templateType === 'custom') {
-          const pattern = fieldConfig.customPattern || `Значение ${Math.floor(Math.random() * 1000)}`;
-          row[col.name] = textGenerators.custom(pattern);
-        } else {
-          row[col.name] = textGenerators[templateType]();
+        // Остальные типы — генерация с проверкой уникальности
+        let value;
+        let attempts = 0;
+        do {
+          value = generateValueForColumn(col, fieldConfig);
+          attempts++;
+        } while (state.used.has(value) && attempts < 50);
+
+        if (state.used.has(value)) {
+          alert(`Не удалось сгенерировать уникальные значения для поля "${col.name}". ` +
+            `Уменьшите количество записей или расширьте диапазон/шаблон значений.`);
+          aborted = true;
+          break;
         }
+        state.used.add(value);
+        row[col.name] = value;
+        continue;
       }
-      
-      // Неизвестный тип - пустая строка
-      else {
-        row[col.name] = '';
-      }
-    });
-    
-    return row;
-  });
+
+      // Обычный столбец
+      row[col.name] = generateValueForColumn(col, fieldConfig);
+    }
+
+    if (!aborted) newData.push(row);
+  }
+
+  if (aborted) return;
 
   setTableData({
   ...tableData,
   [activeDataSet]: {
     ...tableData[activeDataSet],
-    [selectedTable]: [...(tableData[activeDataSet]?.[selectedTable] || []), ...newData]
+    [selectedTable]: [...existingRows, ...newData]
   }
 });
   setShowGenerator(false);
@@ -369,33 +472,26 @@ const parseInsertSQL = (sql) => {
 
   const handleImportSQL = (sql = sqlCode) => {
     try {
-      
+
       const parsedData = parseInsertSQL(sqlCode);
 
+      // Берём текущий активный набор и дозаписываем в него импортированные таблицы,
+      // не затрагивая остальные наборы (main и другие проверки).
+      const currentDataSet = tableData[activeDataSet] || {};
+      const mergedDataSet = { ...currentDataSet };
 
-      const updatedTableData = { 
-  [activeDataSet]: {
-    ...tableData[activeDataSet],
-    ...parsedData
-  }
-};
-
-      
-
-    for (const tableName in parsedData) {
-      if (parsedData.hasOwnProperty(tableName)) {
-        if (tableName === activeDataSet) {
-        // Объединяем существующие данные с новыми для каждой таблицы
-        updatedTableData[tableName] = [
-          ...(updatedTableData[tableName] || []),
+      Object.keys(parsedData).forEach(tableName => {
+        mergedDataSet[tableName] = [
+          ...(currentDataSet[tableName] || []),
           ...parsedData[tableName]
         ];
-        }
-      }
-    }
+      });
 
-      
-      setTableData(updatedTableData);
+      setTableData({
+        ...tableData,
+        [activeDataSet]: mergedDataSet
+      });
+
       setSqlCode('');
       setShowImportModal(false);
       setImportError(null);

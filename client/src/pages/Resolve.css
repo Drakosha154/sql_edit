@@ -1,0 +1,88 @@
+/* Мягкая палитра для страницы решения задания.
+   Затрагивает только собственные классы ниже — просмотр схемы базы
+   (DatabaseVisualPreview) не задействует ни один из них.
+   Цвета адаптируются под светлую и тёмную тему (data-bs-theme). */
+
+/* ---------- Светлая тема (по умолчанию) ---------- */
+
+/* Шапка карточки — приглушённый сине-серый вместо яркого primary */
+.resolve-page .resolve-header {
+  background-color: #eef2f7;
+  color: #3b4a5a;
+  border-bottom: 1px solid #e1e7ef;
+}
+
+/* Шапки таблиц результата — мягкий серый вместо чёрного table-dark */
+.resolve-page .resolve-thead th {
+  background-color: #eef2f7;
+  color: #3b4a5a;
+  border-color: #e1e7ef;
+  font-weight: 600;
+}
+
+/* Основная кнопка «Проверить решение» — спокойный зелёный */
+.resolve-page .btn-soft-success {
+  background-color: #5e9e80;
+  border-color: #5e9e80;
+  color: #fff;
+}
+.resolve-page .btn-soft-success:hover:not(:disabled),
+.resolve-page .btn-soft-success:focus:not(:disabled) {
+  background-color: #4f8b70;
+  border-color: #4f8b70;
+  color: #fff;
+}
+.resolve-page .btn-soft-success:disabled {
+  background-color: #b9d6c8;
+  border-color: #b9d6c8;
+  color: #fff;
+}
+
+/* Мягкие алерты — привязаны к тема-зависимым токенам Bootstrap 5.3,
+   поэтому автоматически подстраиваются под светлую/тёмную тему. */
+.resolve-page .alert-soft-success {
+  --bs-alert-color: var(--bs-success-text-emphasis);
+  --bs-alert-bg: var(--bs-success-bg-subtle);
+  --bs-alert-border-color: var(--bs-success-border-subtle);
+}
+.resolve-page .alert-soft-danger {
+  --bs-alert-color: var(--bs-danger-text-emphasis);
+  --bs-alert-bg: var(--bs-danger-bg-subtle);
+  --bs-alert-border-color: var(--bs-danger-border-subtle);
+}
+.resolve-page .alert-soft-warning {
+  --bs-alert-color: var(--bs-warning-text-emphasis);
+  --bs-alert-bg: var(--bs-warning-bg-subtle);
+  --bs-alert-border-color: var(--bs-warning-border-subtle);
+}
+
+/* ---------- Тёмная тема ---------- */
+
+[data-bs-theme="dark"] .resolve-page .resolve-header {
+  background-color: #1b2430;
+  color: #e9edf3;
+  border-bottom: 1px solid #2c3744;
+}
+
+[data-bs-theme="dark"] .resolve-page .resolve-thead th {
+  background-color: #232c38;
+  color: #e9edf3;
+  border-color: #313c4a;
+}
+
+[data-bs-theme="dark"] .resolve-page .btn-soft-success {
+  background-color: #4f8b70;
+  border-color: #4f8b70;
+  color: #f4f8f6;
+}
+[data-bs-theme="dark"] .resolve-page .btn-soft-success:hover:not(:disabled),
+[data-bs-theme="dark"] .resolve-page .btn-soft-success:focus:not(:disabled) {
+  background-color: #5e9e80;
+  border-color: #5e9e80;
+  color: #fff;
+}
+[data-bs-theme="dark"] .resolve-page .btn-soft-success:disabled {
+  background-color: #34503f;
+  border-color: #34503f;
+  color: #b9c8c0;
+}
