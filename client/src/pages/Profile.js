@@ -36,6 +36,7 @@ export default function Profile() {
     const [taskSolutions, setTaskSolutions] = useState([]);
     const [selectedTask, setSelectedTask] = useState(null);
     const [showLogModal, setShowLogModal] = useState(false);
+    const [showSolutionModal, setShowSolutionModal] = useState(false);
     const [selectedSolution, setSelectedSolution] = useState(null);
     const [activeTab, setActiveTab] = useState('databases');
     const { registerTabSwitcher, unregisterTabSwitcher } = useTutorial();
@@ -202,6 +203,12 @@ export default function Profile() {
             setSelectedSolution(solution);
             setShowLogModal(true);
         }
+    };
+
+    // Функция для открытия модального окна с кодом решения (для любого решения)
+    const showSolutionCode = (solution) => {
+        setSelectedSolution(solution);
+        setShowSolutionModal(true);
     };
 
     const handleDatabaseEdit = (dbId) => {
@@ -481,7 +488,15 @@ export default function Profile() {
                                                         )}
                                                     </td>
                                                     <td>
-                                                        {solution.has_suspicious ? (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline-secondary"
+                                                            className="me-2"
+                                                            onClick={() => showSolutionCode(solution)}
+                                                        >
+                                                            Посмотреть решение
+                                                        </Button>
+                                                        {solution.has_suspicious && (
                                                             <Button
                                                                 size="sm"
                                                                 onClick={() => showSuspiciousLogs(solution)}
@@ -489,8 +504,6 @@ export default function Profile() {
                                                             >
                                                                 Посмотреть все логи ({getSuspiciousLogsCount(solution)})
                                                             </Button>
-                                                        ) : (
-                                                            <small className="text-muted">Нет подозрительной активности</small>
                                                         )}
                                                     </td>
                                                 </tr>
@@ -606,6 +619,47 @@ export default function Profile() {
                         </Modal.Body>
                         <Modal.Footer>
                             <Button variant="secondary" onClick={() => setShowLogModal(false)}>
+                                Закрыть
+                            </Button>
+                        </Modal.Footer>
+                    </Modal>
+
+                    {/* Модальное окно с кодом решения */}
+                    <Modal show={showSolutionModal} onHide={() => setShowSolutionModal(false)} size="lg">
+                        <Modal.Header closeButton>
+                            <Modal.Title>
+                                Решение пользователя
+                                {selectedSolution && (
+                                    <span className="ms-2">{selectedSolution.username}</span>
+                                )}
+                            </Modal.Title>
+                        </Modal.Header>
+                        <Modal.Body>
+                            {selectedSolution ? (
+                                <>
+                                    <p className="mb-1">
+                                        <strong>Статус:</strong>{' '}
+                                        <Badge bg={selectedSolution.is_correct ? "success" : "danger"}>
+                                            {selectedSolution.is_correct ? "Верно" : "Неверно"}
+                                        </Badge>
+                                    </p>
+                                    <p className="mb-1">
+                                        <strong>Дата решения:</strong>{' '}
+                                        {new Date(selectedSolution.created_at).toLocaleString()}
+                                    </p>
+                                    <h6 className="mt-3">SQL запрос:</h6>
+                                    <div className="p-3 rounded border">
+                                        <pre className="mb-0" style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>
+                                            {selectedSolution.decision_sql || "SQL запрос отсутствует"}
+                                        </pre>
+                                    </div>
+                                </>
+                            ) : (
+                                <p className="text-center">Нет данных о решении</p>
+                            )}
+                        </Modal.Body>
+                        <Modal.Footer>
+                            <Button variant="secondary" onClick={() => setShowSolutionModal(false)}>
                                 Закрыть
                             </Button>
                         </Modal.Footer>
