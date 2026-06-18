@@ -39,7 +39,16 @@ export default function Main() {
             navigate('/login');
             return;
         }
-        
+
+        // Запоминаем id текущего пользователя из токена,
+        // чтобы при поиске себя вести на свой собственный профиль
+        try {
+            const decoded = jwtDecode(token);
+            setCurrentUser(decoded.id);
+        } catch (error) {
+            console.error('Error decoding token:', error);
+        }
+
         fetchActiveUsers();
     }, [navigate]);
 
@@ -219,11 +228,11 @@ export default function Main() {
                                                                     решено
                                                                 </small>
                                                             )}
-                                                            <Link 
-                                                                to={`/profile/${user.id}`}
+                                                            <Link
+                                                                to={currentUser === user.id ? '/profile' : `/profile/${user.id}`}
                                                                 className="btn btn-sm btn-primary mt-1"
                                                             >
-                                                                Перейти в профиль
+                                                                {currentUser === user.id ? 'Мой профиль' : 'Перейти в профиль'}
                                                             </Link>
                                                         </div>
                                                     </Col>
